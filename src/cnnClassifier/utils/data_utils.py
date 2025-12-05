@@ -1,6 +1,7 @@
 import zipfile
 from pathlib import Path
 import gdown
+import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
 
 logger = configure_logger(__name__)
@@ -64,3 +65,12 @@ def extract_zip(zip_path: Path, extract_to: Path) -> Path:
 def create_dirs(*paths: Path) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
+
+def print_gpu_info():
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        print("✅ GPU detectada")
+        for gpu in gpus:
+            print(f" - {gpu}")
+    else:
+        print("❌ Nenhuma GPU detectada")
