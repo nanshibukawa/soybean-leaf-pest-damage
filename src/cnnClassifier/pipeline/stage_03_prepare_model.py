@@ -1,53 +1,47 @@
-from cnnClassifier.config.settings import ModelConfig, Paths
+from cnnClassifier.components.prepare_model import PrepareModel
+from cnnClassifier.config.constants import MODELS_DIR
+from cnnClassifier.entity.config_entity import ModelConfig
+from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.utils.data_utils import create_dirs
-from cnnClassifier import logger
-import tensorflow as tf
 
+logger = configure_logger(__name__)
 STAGE_NAME = "Prepare Model"
 
 class PrepareModelPipeline:
     def __init__(self):
-        self.config = ModelConfig()
-    
+        self.model_dir = MODELS_DIR
+        self.model_config = ModelConfig()
+
     def main(self):
-        """Pipeline SIMPLES de preparação do modelo"""
+        """Prepara o modelo de classificação CNN."""
         try:
-            # Cria diretórios
-            create_dirs(Paths.MODELS_DIR)
+            logger.info("Iniciando a preparação do modelo...")
             
-            # Carrega modelo base
-            logger.info(f"🤖 Carregando {self.config.MODEL_NAME}...")
-            base_model = tf.keras.applications.EfficientNetB0(
-                input_shape=self.config.IMAGE_SIZE,
-                weights='imagenet',
-                include_top=False
-            )
-            
-            # Constrói modelo completo
-            model = tf.keras.Sequential([
-                base_model,
-                tf.keras.layers.GlobalAveragePooling2D(),
-                tf.keras.layers.Dropout(0.2),
-                tf.keras.layers.Dense(self.config.CLASSES, activation='softmax')
-            ])
-            
-            # Compila
-            model.compile(
-                optimizer=tf.keras.optimizers.Adam(self.config.LEARNING_RATE),
-                loss='categorical_crossentropy',
-                metrics=['accuracy']
-            )
-            
-            # Salva
-            model_path = Paths.MODELS_DIR / "base_model.keras"
-            model.save(model_path)
-            
-            logger.info(f"✅ Modelo preparado: {model_path}")
-            return model_path
-            
+            # Cria diretório para modelos
+            create_dirs(self.model_dir)
+
+            preparador_modelo = PrepareModel(model_config=self.model_config)
+            modelo = preparador_modelo.build_model()
+
+            modelo_path = self.model_dir / "cnn_model.h5"
+            modelo.save(modelo_path)
+
+            logger.info(f"✅ Modelo salvo em: {modelo_path}")
+            return {
+                    "success": True,
+                    "model_path": modelo_path,
+                    "model_name": self.model_config.model_name,
+                    "message": f"Modelo salvo com sucesso em {modelo_path}"
+                }
+
         except Exception as e:
-            logger.error(f"❌ Erro na preparação: {e}")
-            raise
+            logger.error(f"Erro na preparação do modelo: {e}")
+            return {
+                    "success": False,
+                    "error": str(e),
+                    "message": "Falha na preparação do modelo"
+                }
+
 
 if __name__ == "__main__":
     try:

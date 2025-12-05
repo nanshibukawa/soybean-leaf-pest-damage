@@ -8,6 +8,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
 from cnnClassifier.pipeline.stage_01_data_ingestion import DataIngestionPipeline
 from cnnClassifier.pipeline.stage_02_data_splitting import DataSplittingPipeline
+from cnnClassifier.pipeline.stage_03_prepare_model import PrepareModelPipeline
 from cnnClassifier.utils.logger import configure_logger
 
 logger = configure_logger(__name__)
@@ -30,39 +31,29 @@ def main():
         logger.info("\n🔄 === Stage 2: Data Splitting ===")
         data_splitting = DataSplittingPipeline()
         stage2_result = data_splitting.main()
-        
+
         if stage2_result["success"]:
-            # ✅ LOGS MELHORADOS
             logger.info("✅ Stage 2 completo!")
-            
-            # Conta batches sem consumir datasets
-            train_batches = len(stage2_result["train_data"])
-            val_batches = len(stage2_result["validation_data"])
-            
-            # Estima total de imagens
-            batch_size = 64  # Ou pega da config
-            train_images = train_batches * batch_size
-            val_images = val_batches * batch_size
-            total_images = train_images + val_images
-            
-            print("\n" + "="*50)
-            print("📊 RESUMO DO PIPELINE")
-            print("="*50)
-            print(f"📁 Dados extraídos: {stage1_result}")
-            print(f"📈 Treino: ~{train_images} imagens ({train_batches} batches)")
-            print(f"📉 Validação: ~{val_images} imagens ({val_batches} batches)")
-            print(f"📊 Total: ~{total_images} imagens")
-            print(f"🎯 Divisão: {train_images/total_images*100:.1f}% / {val_images/total_images*100:.1f}%")
-            print("="*50)
-            
         else:
             logger.error(f"❌ Stage 2 falhou: {stage2_result['error']}")
             return stage2_result
-        
+
+        # ===== STAGE 3: DATA PREPARATION =====
+        logger.info("\n🔄 === Stage 3: Data Preparation ===")
+        data_preparation = PrepareModelPipeline()
+        stage3_result = data_preparation.main()
+
+        if stage3_result["success"]:
+            logger.info("✅ Stage 3 completo!")
+        else:
+            logger.error(f"❌ Stage 3 falhou: {stage3_result['error']}")
+            return stage3_result
+
         logger.info("🏁 Pipeline completo com sucesso!")
         return {
             "stage1": stage1_result,
             "stage2": stage2_result,
+            "stage3": stage3_result,
             "success": True
         }
         
