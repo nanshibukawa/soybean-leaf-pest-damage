@@ -1,83 +1,38 @@
 [project]
 name = "soybean-leaf-pest-damage"
 version = "0.1.0"
-description = "Soybean leaf pest damage detection system using deep learning and clean architecture principles"
+description = "Soybean leaf pest damage classification using CNN"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "==3.12.7"
 dependencies = [
-    "numpy>=1.24.0",
-    "opencv-python>=4.8.0",
-    "Pillow>=10.0.0",
-    "tensorflow>=2.13.0",
-    "pytest>=7.4.0",
-    "albumentations>=1.3.1",
-    "scikit-learn>=1.3.0",
-    "matplotlib>=3.7.0",
-    "seaborn>=0.12.0"
+    "tensorflow[and-cuda]==2.17.1",
+    "pandas",
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "scikit-learn",
+    "PyYAML",
+    "tqdm",
+    "ensure==1.0.2",
+    "joblib",
+    "types-PyYAML",
+    "scipy",
+    "Flask",
+    "Flask-Cors",
+    "gdown",
+    "loguru",
+    "setuptools",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "black>=23.0.0",
-    "isort>=5.12.0",
-    "flake8>=6.0.0",
-    "mypy>=1.5.0",
-    "pytest-cov>=4.1.0",
-    "pre-commit>=3.3.0"
+    "dvc>=3.60.1",
+    "notebook>=7.4.3",
 ]
 
-[project.scripts]
-pest-detect = "src.presentation.cli:main"
+[tool.uv.sources]
+soybean-leaf-pest-damage = { workspace = true }
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/cnnClassifier"]
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "-v --tb=short"
-
-[tool.black]
-line-length = 88
-target-version = ['py312']
-include = '\.pyi?$'
-extend-exclude = '''
-/(
-  # directories
-  \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.tox
-  | \.venv
-  | build
-  | dist
-)/
-'''
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-line_length = 88
-known_first_party = ["src"]
-
-[tool.mypy]
-python_version = "3.12"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = true
-disallow_incomplete_defs = true
-check_untyped_defs = true
-disallow_untyped_decorators = true
-no_implicit_optional = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-warn_no_return = true
-warn_unreachable = true
-strict_equality = true
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
