@@ -37,6 +37,7 @@ SUPPORTED_IMAGE_FORMATS = ['.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.webp']
 # MODELO
 # =============================================================================
 MODEL_NAME = "MobileNetV3"
+MODELS_DIR = ARTIFACTS_DIR / "models"
 IMAGE_SIZE = [224, 224, 3]
 BATCH_SIZE = 32
 EPOCHS = 10
