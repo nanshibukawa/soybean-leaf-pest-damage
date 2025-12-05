@@ -64,3 +64,12 @@ def extract_zip(zip_path: Path, extract_to: Path) -> Path:
 def create_dirs(*paths: Path) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
+
+def log_gpu_info():
+    gpus = tf.config.list_physical_devices('GPU')
+    if gpus:
+        logger.debug("✅ GPU detectada")
+        for gpu in gpus:
+            logger.debug(f" - {gpu}")
+    else:
+        logger.debug("❌ Nenhuma GPU detectada")
