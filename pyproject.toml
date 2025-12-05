@@ -11,23 +11,44 @@ dependencies = [
     "matplotlib",
     "seaborn",
     "scikit-learn",
-    "PyYAML",
+    "scipy",
+    
+    # Web framework (for future API)
+    "Flask",
+    "Flask-Cors",
+    
+    # Utility libraries
     "tqdm",
     "ensure==1.0.2",
     "joblib",
     "types-PyYAML",
-    "scipy",
-    "Flask",
-    "Flask-Cors",
-    "gdown",
-    "loguru",
     "setuptools",
+    
+    # Future image processing dependencies (currently unused but planned)
+    # Uncomment when needed:
+    # "opencv-python",      # Computer vision operations
+    # "Pillow",             # Image processing
+    # "albumentations",     # Image augmentation
 ]
 
 [dependency-groups]
 dev = [
     "dvc>=3.60.1",
     "notebook>=7.4.3",
+]
+
+# Test dependencies (uncomment when tests are added)
+test = [
+    # "pytest>=7.0.0",
+    # "pytest-cov",
+    # "pytest-mock",
+]
+
+# Optional image processing dependencies (install when needed)
+image-processing = [
+    "opencv-python",
+    "Pillow", 
+    "albumentations",
 ]
 
 [tool.uv.sources]

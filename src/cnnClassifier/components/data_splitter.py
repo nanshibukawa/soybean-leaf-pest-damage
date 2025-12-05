@@ -1,9 +1,10 @@
+import os
 # 🔇 SILENCIA LOGS VERBOSOS DO TENSORFLOW 0=all, 1=info, 2=warning, 3=error
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'    # Silencia logs verbosos
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'   # Remove warnings oneDNN
 os.environ['CUDA_VISIBLE_DEVICES'] = '0' 
 
-import os
+
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +30,7 @@ class DataSplitter:
             directory=self.image_config.data_dir,
             validation_split=1 - self.data_split_config.train_ratio,
             shuffle=True,
-            subset=self.subset.TRAIN,
+            subset=self.subset.TRAIN.value,
             seed=self.data_split_config.random_seed,
             image_size=(self.image_config.altura, self.image_config.largura),
             batch_size=self.data_split_config.batch_size
@@ -41,7 +42,7 @@ class DataSplitter:
             directory=self.image_config.data_dir,
             validation_split=self.data_split_config.val_ratio,
             shuffle=True,
-            subset=self.subset.VALIDATION,
+            subset=self.subset.VALIDATION.value,
             seed=self.data_split_config.random_seed,
             image_size=(self.image_config.altura, self.image_config.largura),
             batch_size=self.data_split_config.batch_size,

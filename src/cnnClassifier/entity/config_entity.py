@@ -1,3 +1,4 @@
+from enum import Enum
 from dataclasses import dataclass, field
 from pathlib import Path
 from pydantic import BaseModel, Field
@@ -24,7 +25,7 @@ class DataSplitterConfig(BaseModel):
     test_ratio: float = Field(0.20, description="Proporção dos dados para teste")
 
 
-class DataSubsetType:
+class DataSubsetType(Enum):
     TRAIN = 'training'
     VALIDATION = 'validation'
     TEST = 'test'

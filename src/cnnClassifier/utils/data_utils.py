@@ -66,11 +66,11 @@ def create_dirs(*paths: Path) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
 
-def print_gpu_info():
+def log_gpu_info():
     gpus = tf.config.list_physical_devices('GPU')
     if gpus:
-        print("✅ GPU detectada")
+        logger.debug("✅ GPU detectada")
         for gpu in gpus:
-            print(f" - {gpu}")
+            logger.debug(f" - {gpu}")
     else:
-        print("❌ Nenhuma GPU detectada")
+        logger.debug("❌ Nenhuma GPU detectada")
