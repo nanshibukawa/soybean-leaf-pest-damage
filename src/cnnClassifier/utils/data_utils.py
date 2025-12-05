@@ -1,7 +1,6 @@
 import zipfile
 from pathlib import Path
 import gdown
-import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
 
 logger = configure_logger(__name__)
