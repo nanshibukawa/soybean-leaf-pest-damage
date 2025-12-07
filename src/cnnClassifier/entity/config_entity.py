@@ -29,13 +29,14 @@ class ImageConfig(BaseModel):
         return (self.altura, self.largura, self.canais)
 
 class DataSplitterConfig(BaseModel):
-    batch_size: int = Field(32, description="Tamanho do lote para treinamento")
-    random_seed: int = Field(42, description="Semente para embaralhamento aleatório")
-    train_ratio: float = Field(0.8, description="Proporção dos dados para treino")
-    val_ratio: float = Field(0.20, description="Proporção dos dados para validação")
-    test_ratio: float = Field(0.20, description="Proporção dos dados para teste")
+    batch_size: int = Field(..., description="Tamanho do lote para treinamento")
+    random_seed: int = Field(..., description="Semente para embaralhamento aleatório")
+    train_ratio: float = Field(..., description="Proporção dos dados para treino")
+    val_ratio: float = Field(..., description="Proporção dos dados para validação")
 
 class ModelConfig(BaseModel):
+    # Global
+    random_seed: int
     # Model architecture
     model_name: str = Field(..., description="Nome do modelo CNN")
     weights: str = Field(..., description="Pesos pré-treinados")
@@ -59,6 +60,8 @@ class ModelConfig(BaseModel):
 
     # Dataset
     num_classes: int 
+    train_ratio: float
+    val_ratio: float
 
     # Data augmentation
     augmentation_enabled: bool = Field(True, description="Ativar data augmentation")
@@ -101,7 +104,7 @@ class ModelConfig(BaseModel):
                 dropout_rate=config['training']['dropout_rate'],
                 loss_function=config['training']['loss'],            # ← PRECISA EXISTIR!
                 metrics=config['training']['metrics'],              # ← PRECISA EXISTIR!
-                
+                random_seed=config['random_seed'],
                 # Optimizer
                 optimizer_name=config['optimizer']['name'],
                 optimizer_params={
@@ -111,6 +114,8 @@ class ModelConfig(BaseModel):
                 
                 # Dataset
                 num_classes=config['dataset']['classes'],
+                train_ratio=config['dataset']['train_ratio'],
+                val_ratio=config['dataset']['val_ratio'],
                 
                 # Augmentation
                 augmentation_enabled=config['augmentation']['enabled'],

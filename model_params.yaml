@@ -1,0 +1,56 @@
+random_seed: 32
+
+model:
+  name: "VGG19"
+  weights: "imagenet"
+  include_top: false
+
+image:
+  size: [224, 224, 3]
+
+training:
+  batch_size: 16
+  epochs: 100
+  dropout_rate: 0.0
+  loss: "sparse_categorical_crossentropy"
+  metrics: ["accuracy"]
+
+
+optimizer:
+  name: "adam"
+  learning_rate: 0.001
+  beta_1: 0.9
+  beta_2: 0.999
+  epsilon: 1e-07
+  momentum: 0.9
+  nesterov: true
+  rho: 0.9
+
+augmentation:
+  enabled: true
+  horizontal_flip: true
+  rotation_factor: 0.05
+  zoom_factor: 0.05
+
+dataset:
+  classes: 3
+  train_ratio: 0.8
+  val_ratio: 0.2
+  
+# Diferentes configurações para experimentação
+experiments:
+  baseline:
+    model:
+      name: "MobileNetV3"
+      dropout_rate: 0.2
+    training:
+      epochs: 50
+      batch_size: 32
+      
+  vgg_experiment:
+    model:
+      name: "VGG19"
+      dropout_rate: 0.0
+    training:
+      epochs: 100
+      batch_size: 16
