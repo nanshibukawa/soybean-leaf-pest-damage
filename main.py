@@ -40,7 +40,7 @@ def main():
 
         # ===== STAGE 3: DATA PREPARATION =====
         logger.info("\n🔄 === Stage 3: Data Preparation ===")
-        data_preparation = PrepareModelPipeline()
+        data_preparation = PrepareModelPipeline(config_path="model_params.yaml")
         stage3_result = data_preparation.main()
 
         if stage3_result["success"]:
@@ -56,7 +56,6 @@ def main():
             "stage3": stage3_result,
             "success": True
         }
-        
     except Exception as e:
         logger.exception(f"💥 Pipeline falhou: {e}")
         return {"success": False, "error": str(e)}
