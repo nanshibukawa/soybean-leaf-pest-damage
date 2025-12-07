@@ -1,7 +1,12 @@
 from pathlib import Path
 from cnnClassifier.components.data_splitter import DataSplitter
 from cnnClassifier.config.constants import DATA_SOURCE_DIR
-from cnnClassifier.entity.config_entity import DataSplitterConfig, DataSubsetType, ImageConfig
+from cnnClassifier.entity.config_entity import (
+    DataSplitterConfig, 
+    DataSubsetType, 
+    ImageConfig, 
+    ModelConfig
+)
 from cnnClassifier.utils.logger import configure_logger
 
 logger = configure_logger(__name__)
@@ -10,20 +15,27 @@ logger = configure_logger(__name__)
 STAGE_NAME = "Data Splitting"
 
 class DataSplittingPipeline:
-    def __init__(self):
+    def __init__(self, config: ModelConfig = None, image_config: ImageConfig = None):
         self.DATA_SOURCE_DIR = DATA_SOURCE_DIR
+        self.config = config
+        self.image_config = image_config
     def main(self):
         """Executa a divisão dos dados em train/val/test"""
         try:
 
             logger.info("Iniciando o DataSplitter...")
 
-            data_split_config = DataSplitterConfig()
-            image_config = ImageConfig(data_dir=Path(self.DATA_SOURCE_DIR))
+            data_split_config = DataSplitterConfig(
+                batch_size=self.config.batch_size,
+                random_seed=self.config.random_seed,
+                train_ratio=self.config.train_ratio,
+                val_ratio=self.config.val_ratio
+
+            )
             
             data_splitter = DataSplitter(
                 data_split_config=data_split_config,
-                image_config=image_config,
+                image_config=self.image_config,
                 subset=DataSubsetType
             )
     

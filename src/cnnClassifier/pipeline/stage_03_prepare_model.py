@@ -12,7 +12,9 @@ STAGE_NAME = "Prepare Model"
 class PrepareModelPipeline:
     def __init__(
             self, 
-            config_path: str="model_params.yaml",
+            model_config: ModelConfig,
+            image_config: ImageConfig,
+            # config_path: str="model_params.yaml",
             experiment: str = None
             ):
         """
@@ -23,26 +25,8 @@ class PrepareModelPipeline:
             experiment: Nome do experimento específico para carregar
         """
         self.model_dir = MODELS_DIR
-        if not Path(config_path).exists():
-            raise FileNotFoundError(f"Arquivo de configuração não encontrado: {config_path}")
-
-        try:
-            logger.info(f"Carregando configuração de: {config_path}")
-            if experiment:
-                logger.info(f"Usando experimento: {experiment}")
-            self.model_config = ModelConfig.from_yaml(config_path, experiment)
-            
-            # Criar ImageConfig baseada nas configurações do YAML
-            self.image_config = ImageConfig(
-                altura=self.model_config.image_size[0],
-                largura=self.model_config.image_size[1],
-                canais=self.model_config.image_size[2],
-                data_dir=Path("artifacts/data/")  # ou seu path padrão
-            )
-            logger.info(f"Configuração carregada: {self.model_config.model_name}")
-        except Exception as e:
-            logger.error(f"Erro ao carregar YAML: {e}.")
-
+        self.model_config = model_config
+        self.image_config = image_config
 
     def main(self):
         """Prepara o modelo de classificação CNN."""
