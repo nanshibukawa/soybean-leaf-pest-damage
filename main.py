@@ -2,6 +2,8 @@
 import os
 from pathlib import Path
 
+from cnnClassifier.pipeline.stage_04_model_training import ModelTrainingPipeline
+
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
@@ -62,12 +64,28 @@ def main():
             logger.error(f"❌ Stage 3 falhou: {stage3_result['error']}")
             return stage3_result
 
+        # ===== STAGE 4: Model Training =====
+        logger.info("\n🔄 === Stage 4: Model Training ===")
+        model_training = ModelTrainingPipeline(config=model_config)
+        stage4_result = model_training.main(
+            stage2_result=stage2_result, 
+            stage3_result=stage3_result
+            )
+        
+        if stage4_result["success"]:
+            logger.info("✅ Stage 4 completo!")
+        else:
+            logger.error(f"❌ Stage 4 falhou: {stage4_result['error']}")
+            return stage4_result
+
         logger.info("🏁 Pipeline completo com sucesso!")
+
         return {
             "config": model_config,
             "stage1": stage1_result,
             "stage2": stage2_result,
             "stage3": stage3_result,
+            "stage4": stage4_result,
             "success": True
         }
     except Exception as e:
