@@ -78,12 +78,6 @@ class PrepareModel:
         ])
         
 
-        # Compilar modelo
-        modelo.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=self.model_config.learning_rate),
-            loss='sparse_categorical_crossentropy',
-            metrics=['accuracy']
-        )
         
         logger.info(f"✅ Modelo {self.model_config.model_name} construído com sucesso")
         return modelo
