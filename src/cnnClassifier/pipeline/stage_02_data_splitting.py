@@ -1,4 +1,5 @@
 from pathlib import Path
+
 from cnnClassifier.components.data_splitter import DataSplitter
 from cnnClassifier.config.constants import DATA_SOURCE_DIR
 from cnnClassifier.entity.config_entity import (
@@ -20,7 +21,16 @@ class DataSplittingPipeline:
         self.config = config
         self.image_config = image_config
     def main(self):
-        """Executa a divisão dos dados em train/val/test"""
+        """
+        Executa a divisão dos dados em train/val/test
+        Returns:
+            dict: Resultados da divisão dos dados
+            - success (bool): Indica se a divisão foi bem-sucedida
+            - train_data (list): Dados de treino
+            - validation_data (list): Dados de validação
+
+        """
+
         try:
 
             logger.info("Iniciando o DataSplitter...")
@@ -59,9 +69,27 @@ class DataSplittingPipeline:
 
 if __name__ == "__main__":
     try:
+        logger.info("📋 Carregando configurações...")
+        # model_config = ModelConfig.from_yaml(config_path="model_params.yaml")
+        # model_config = ModelConfig.from_yaml("model_params.yaml", experiment="vgg_transfer")
+        model_config = ModelConfig.from_yaml("model_params.yaml", experiment="mobilenet")
+
+
+
+        
+        
+        logger.info(f"✅ Configuração carregada: {model_config.model_name}")
+
+        image_config = ImageConfig(
+                altura=model_config.image_size[0],
+                largura=model_config.image_size[1],
+                canais=model_config.image_size[2],
+                data_dir=Path(DATA_SOURCE_DIR)
+        )
+
         logger.info(f"***" * 10)
         logger.info(f">>>>>> stage {STAGE_NAME} started <<<<<<")
-        obj = DataSplittingPipeline()
+        obj = DataSplittingPipeline(config=model_config, image_config=image_config)
         stats = obj.main()
         logger.info(f">>>>>> stage {STAGE_NAME} completed <<<<<<")
         logger.info(f"📈 Estatísticas: {stats}")
