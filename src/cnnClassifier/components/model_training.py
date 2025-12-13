@@ -1,6 +1,9 @@
 from typing import Any, Dict
 import tensorflow as tf
 
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 from cnnClassifier.entity.config_entity import ModelConfig
 from cnnClassifier.utils.logger import configure_logger
 
@@ -50,10 +53,32 @@ class ModelTraining:
             logger.info(f"Épocas: {self.model_config.epochs}")
             self._compile_model()
             
+            callbacks = [
+                # Early Stopping - para quando validation loss não melhora
+                tf.keras.callbacks.EarlyStopping(
+                    monitor='val_loss',
+                    patience=10,
+                    restore_best_weights=True,
+                    verbose=1,
+                    mode='min'
+                ),
+                
+                # Reduce Learning Rate on Plateau - reduz LR quando estagna
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor='val_loss',
+                    factor=0.5,
+                    patience=5,
+                    min_lr=1e-7,
+                    verbose=1,
+                    mode='min'
+                )
+            ]
+            
             self.history = self.model.fit(
                 train_data,
                 validation_data=validation_data,
                 epochs=self.model_config.epochs,
+                callbacks=callbacks,
                 verbose=1
             )
             return self.history
