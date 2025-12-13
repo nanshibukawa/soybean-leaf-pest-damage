@@ -5,7 +5,14 @@ import numpy as np
 import seaborn as sns
 
 from pathlib import Path
-from sklearn.metrics import *
+from sklearn.metrics import (
+    accuracy_score, 
+    classification_report, 
+    confusion_matrix, 
+    f1_score, 
+    precision_score, 
+    recall_score
+)
 import tensorflow as tf
 
 from cnnClassifier.entity.config_entity import ImageConfig, ModelConfig
@@ -132,6 +139,7 @@ class ModelEvaluator:
 
     def _plot_evaluation_metrics(self, metrics, save_dir):
         """Plot das métricas de avaliação (confusion matrix + F1-Score)"""
+        # TODO verify fig used
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
         # Matriz de confusão
@@ -166,7 +174,7 @@ class ModelEvaluator:
 
         plt.tight_layout()
         plt.savefig(save_dir / "evaluation_metrics.png", dpi=300, bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
 
     def _plot_training_history(self, history, save_dir):
         """Plot do histórico de treinamento (Loss + Accuracy)"""
@@ -204,7 +212,7 @@ class ModelEvaluator:
 
         plt.tight_layout()
         plt.savefig(save_dir / "training_history.png", dpi=300, bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
 
         logger.info(
             f"📈 Gráficos de treinamento salvos em: {save_dir}/training_history.png"

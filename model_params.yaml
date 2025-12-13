@@ -12,13 +12,13 @@ image:
 training:
   batch_size: 16
   epochs: 100
-  dropout_rate: 0.5
+  dropout_rate: 0.2
   loss: "sparse_categorical_crossentropy"
   metrics: ["accuracy"]
 
 
 optimizer:
-  name: Adam()
+  name: "adam" #TODO - implement for using this parameter
   learning_rate: 0.001
   beta_1: 0.9
   beta_2: 0.999
@@ -51,15 +51,15 @@ experiments:
       use_pretrained: true
       weights: "imagenet"
       include_top: false
-      dropout_rate: 0.3
+      dropout_rate: 0.2
 
 
     augmentation:
       # Inspirado no paper YOLOv5 - adaptado para classificação
       advanced_enabled: true
-      mosaic_probability: 0.5  # Mosaic adaptado para classificação
-      mixup_probability: 0.15  # MixUp (suportado nativamente)
-      cutmix_probability: 0.25  # CutMix para melhor generalização
+      mosaic_probability: 0.5  # Mosaic adaptado para classificação #TODO - Implement
+      mixup_probability: 0.15  # MixUp (suportado nativamente) #TODO - Implement
+      cutmix_probability: 0.25  # CutMix para melhor generalização #TODO - Implement
       
       healthy_specific:
         # Aumentado baseado no paper (backgrounds múltiplos)
@@ -68,24 +68,24 @@ experiments:
         vertical_flip: true
         brightness_range: [0.6, 1.4]  # Range maior como no paper
         zoom_range: [0.7, 1.3]  # Range maior
-        shear_range: 0.2  # Aumentado
+        shear_range: 0.2  # Aumentado #TODO - Implement
         fill_mode: "nearest"
         target_samples: 500
         # Novas técnicas do paper
-        gaussian_noise: 0.05
-        contrast_range: [0.8, 1.2]
-        saturation_range: [0.8, 1.2]
-        multiple_backgrounds: true  # Simular diferentes backgrounds
-        edge_enhancement: true
+        gaussian_noise: 0.05 #TODO - Implement
+        contrast_range: [0.8, 1.2] #TODO - Implement
+        saturation_range: [0.8, 1.2] #TODO Implement
+        multiple_backgrounds: true  # Simular diferentes backgrounds #TODO Implement
+        edge_enhancement: true #TODO Implement
       
       general:
-        rotation_range: 20  # Aumentado de 15
+        rotation_range: 15  # Reduzido de 20
         horizontal_flip: true
-        brightness_range: [0.8, 1.2]  # Range maior
+        brightness_range: [0.85, 1.15]  # Mais conservador
         zoom_range: [0.9, 1.1]
         # Adicionais baseadas no paper
         gaussian_noise: 0.02
-        contrast_range: [0.9, 1.1]
+        contrast_range: [0.95, 1.05]  # Mais conservador
 
     training:
       epochs: 100
@@ -93,7 +93,7 @@ experiments:
       class_weights:
         0: 0.7    # Caterpillar (638 amostras)
         1: 1.0    # Diabrotica (468 amostras)
-        2: 2.5    # Healthy (176 amostras) - PESO MAIOR
+        2: 3.0    # Healthy (176 amostras) - PESO MAIOR
   vgg_transfer:
     model:
       name: "VGG19"
