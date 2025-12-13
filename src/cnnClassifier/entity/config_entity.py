@@ -59,12 +59,14 @@ class ModelConfig(BaseModel):
     dropout_rate: float = Field(..., description="Taxa de dropout")
     loss_function: str = Field(..., description="Função de loss")
     metrics: List[str] = Field(..., description="Métricas de avaliação")
-    class_weights: Optional[Dict[int, float]] = None  # ← ADICIONAR
+    class_weights: Optional[Dict[int, float]] = None
     use_pretrained: bool = Field(default=True, description="Usar modelo pré-treinado")
 
     # Otimizador e compilação
     optimizer_name: str = Field(..., description="Nome do otimizador")
-    optimizer_params: Optional[dict] = Field(default_factory=dict, description="Parâmetros específicos do otimizador")
+    optimizer_params: Optional[dict] = Field(
+        default_factory=dict, description="Parâmetros específicos do otimizador"
+    )
 
     # Dataset
     num_classes: int
@@ -94,7 +96,7 @@ class ModelConfig(BaseModel):
                 else:
                     config[section] = values
 
-        # Class weights - CORRIGIDO
+        # Class weights
         class_weights = config.get("training", {}).get("class_weights")
         if class_weights:
             # Converter strings para int (YAML pode ler como string)
@@ -120,10 +122,10 @@ class ModelConfig(BaseModel):
                 # Optimizer
                 optimizer_name=config["optimizer"]["name"],
                 optimizer_params={
-                    k: v for k, v in config["optimizer"].items() 
-                    if k not in ['name', 'learning_rate']
+                    k: v
+                    for k, v in config["optimizer"].items()
+                    if k not in ["name", "learning_rate"]
                 },
- 
                 # Dataset
                 num_classes=config["dataset"]["classes"],
                 train_ratio=config["dataset"]["train_ratio"],

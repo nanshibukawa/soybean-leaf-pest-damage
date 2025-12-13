@@ -1,6 +1,10 @@
 from typing import Optional
 import tensorflow as tf
 
+physical_devices = tf.config.list_physical_devices('GPU')
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
+
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ModelConfig, ImageConfig
 
@@ -70,7 +74,7 @@ class PrepareModel:
         inputs = tf.keras.layers.Input(shape=self.image_config.size_tuple)
         x = self.data_augmentation(inputs)
 
-        # x = tf.keras.layers.Rescaling(1./255)(x) # Descomentar se necessário em algum modelo (MobileNet já faz isso internamente)
+        # x = tf.keras.layers.Rescaling(1./255)(x) # Descomentar  para VGG19 (MobileNet já faz isso internamente)
 
         x = modelo_base(x, training=False)
         x = tf.keras.layers.Flatten()(x)
@@ -115,10 +119,19 @@ class PrepareModel:
                 # Flatten e Dense layers
                 tf.keras.layers.Flatten(),
                 tf.keras.layers.Dropout(self.model_config.dropout_rate),
-                tf.keras.layers.Dense(128, activation="relu"),
-                tf.keras.layers.Dropout(self.model_config.dropout_rate),
+                # DENSE COM L2 REGULARIZATION
                 tf.keras.layers.Dense(
-                    self.model_config.num_classes, activation=activation_last_layer
+                    128, 
+                    activation="relu",
+                    kernel_regularizer=tf.keras.regularizers.L2(0.01)
+                ),
+                tf.keras.layers.Dropout(self.model_config.dropout_rate),
+                
+                # SAÍDA COM L2 REGULARIZATION
+                tf.keras.layers.Dense(
+                    self.model_config.num_classes, 
+                    activation=activation_last_layer,
+                    kernel_regularizer=tf.keras.regularizers.L2(0.001)
                 ),
             ]
         )
@@ -150,7 +163,7 @@ class PrepareModel:
             brightness = self.model_config.brightness_range
             layers.append(
                 tf.keras.layers.RandomBrightness(
-                    factor=(brightness[0] - 1.0, brightness[1] - 1.0)
+                    factor=brightness
                 )
             )
             logger.info("🔄Data Augmentation: RandomBrightness adicionado")
@@ -174,8 +187,8 @@ class PrepareModel:
         Cria modelo pré-treinado baseado no modelo.
 
         Args:
-            include_top:
-            weights:
+            include_top: Se true, inclui a camada fully-connected no topo do modelo.
+            weights: Pesos a serem carregados (ex: "imagenet")
 
         Returns:
             tf.keras.Model: Modelo base pré-treinado
