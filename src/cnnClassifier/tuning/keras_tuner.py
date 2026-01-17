@@ -291,7 +291,9 @@ class KerasTunerSearch:
         # Salvar modelo
         output_dir = Path("artifacts/models")
         output_dir.mkdir(parents=True, exist_ok=True)
-        model_path = output_dir / "mobilenetv3_keras_tuner_best.keras"
+        model_path = (
+            output_dir / f"{self.model_config.model_name}_keras_tuner_best.keras"
+        )
         model.save(model_path)
 
         logger.info(f"✅ Modelo final salvo em: {model_path}")

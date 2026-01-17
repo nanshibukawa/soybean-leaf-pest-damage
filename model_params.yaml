@@ -35,7 +35,7 @@ tuning:
     max: 40
 
 
-#NOTE: valoes hardcodados em model_training.py, arrumar.
+#NOTE: valores hardcodados em model_training.py, arrumar.
 optimizer:
   name: "adam" 
   learning_rate: 0.0001

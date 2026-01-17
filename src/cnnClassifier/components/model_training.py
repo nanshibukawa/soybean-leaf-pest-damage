@@ -1,5 +1,4 @@
 from typing import Any, Dict
-import numpy as np
 import tensorflow as tf
 
 
