@@ -1,29 +1,49 @@
-random_seed: 32
+random_seed: 42
 
 model:
-  name: "VGG19"
+  # name: "VGG19"
+  name: "MobileNetV3"
   weights: "imagenet"
   include_top: false
+  use_pretrained: true
 
 image:
   size: [224, 224, 3]
 
 training:
-  batch_size: 16
+  batch_size: 32
   epochs: 100
-  dropout_rate: 0.0
+  dropout_rate: 0.4
   loss: "sparse_categorical_crossentropy"
   metrics: ["accuracy"]
 
+tuning:
+  # Keras Tuner - Bayesian Optimization
+  max_trials: 30          # Número de configurações a testar
+  epochs_per_trial: 5     # Épocas por candidato (com early stopping)
+  final_epochs: 100       # Épocas do modelo final
+  
+  # Espaço de busca
+  learning_rate:
+    min: 1e-5
+    max: 5e-4
+  dropout_rate:
+    min: 0.2
+    max: 0.6
+  unfreeze_last_n_layers:
+    min: 8
+    max: 40
 
+
+#NOTE: valores hardcodados em model_training.py, arrumar.
 optimizer:
-  name: "adam"
-  learning_rate: 0.001
+  name: "adam" 
+  learning_rate: 0.0001
   beta_1: 0.9
   beta_2: 0.999
   epsilon: 1e-07
   momentum: 0.9
-  nesterov: true
+  # nesterov: true
   rho: 0.9
 
 augmentation:
@@ -31,7 +51,14 @@ augmentation:
   horizontal_flip: true
   rotation_factor: 0.05
   zoom_factor: 0.05
-
+  # Advanced parameters (will be loaded if present)
+  rotation_range: 20  # graus
+  brightness_range: [0.8, 1.2]  # [min, max]
+  # brightness_range: [0.2,1.2]
+  zoom_range: [0.9, 1.1]  # [min, max]
+  # contrast_range: [0.9, 1.1]  # [min, max]
+  contrast_range: [0.1, 1.1]
+  gaussian_noise: 0.05  # fator de ruído
 dataset:
   classes: 3
   train_ratio: 0.8
@@ -39,18 +66,70 @@ dataset:
   
 # Diferentes configurações para experimentação
 experiments:
-  baseline:
+  mobilenet:
     model:
       name: "MobileNetV3"
-      dropout_rate: 0.2
-    training:
-      epochs: 50
-      batch_size: 32
+      use_pretrained: true
+      weights: "imagenet"
+      include_top: false
+      dropout_rate: 0.4
+
+
+    augmentation:
+      # Inspirado no paper YOLOv5 - adaptado para classificação
+      advanced_enabled: true
+      mosaic_probability: 0.5  # Mosaic adaptado para classificação #TODO - Implement
+      mixup_probability: 0.15  # MixUp (suportado nativamente) #TODO - Implement
+      cutmix_probability: 0.25  # CutMix para melhor generalização #TODO - Implement
       
-  vgg_experiment:
+      healthy_specific:
+        # Aumentado baseado no paper (backgrounds múltiplos)
+        rotation_range: 45  # Aumentado de 30
+        horizontal_flip: true
+        vertical_flip: true
+        brightness_range: [0.6, 1.4]  # Range maior como no paper
+        zoom_range: [0.7, 1.3]  # Range maior
+        shear_range: 0.2  # Aumentado #TODO - Implement
+        fill_mode: "nearest"
+        target_samples: 500
+        # Novas técnicas do paper
+        gaussian_noise: 0.05 
+        # contrast_range: [0.8, 1.2] #TODO - Implement
+        contrast_range: [0.1, 1.1]
+        saturation_range: [0.8, 1.2] #TODO Implement
+        multiple_backgrounds: true  # Simular diferentes backgrounds #TODO Implement
+        edge_enhancement: true #TODO Implement
+      
+      general:
+        rotation_range: 15  # Reduzido de 20
+        horizontal_flip: true
+        brightness_range: [0.85, 1.15]  # Mais conservador
+        zoom_range: [0.9, 1.1]
+        # Adicionais baseadas no paper
+        gaussian_noise: 0.05
+        # contrast_range: [0.95, 1.05]  # Mais conservador
+        contrast_range: [0.1, 1.1]
+
+    training:
+      epochs: 300
+      batch_size: 32
+      class_weights:
+        0: 0.7    # Caterpillar (638 amostras)
+        1: 1.0    # Diabrotica (468 amostras)
+        2: 3.5
+        # 2: 4.0    # Healthy (176 amostras) - PESO MAIOR
+  vgg_transfer:
     model:
       name: "VGG19"
-      dropout_rate: 0.0
+      use_pretrained: true
+      weights: "imagenet"
+      include_top: false
+
+      # dropout_rate: 0.0
     training:
       epochs: 100
       batch_size: 16
+      class_weights:
+        0: 1.0    # Caterpillar (638 amostras)
+        1: 1.0    # Diabrotica (468 amostras)
+        2: 2.5    # Healthy (176 amostras) - PESO MAIOR
