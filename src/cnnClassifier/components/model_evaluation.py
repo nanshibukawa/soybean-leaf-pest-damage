@@ -77,6 +77,7 @@ class ModelEvaluator:
             "success": True,
             "metrics": metrics,
             "predictions": {"y_true": y_true.tolist(), "y_pred": y_pred.tolist()},
+            "report_path": str(report_path),
         }
 
     def _predict(self, model, validation_data):
@@ -139,7 +140,6 @@ class ModelEvaluator:
 
     def _plot_evaluation_metrics(self, metrics, save_dir):
         """Plot das métricas de avaliação (confusion matrix + F1-Score)"""
-        # TODO verify fig used
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
 
         # Matriz de confusão
