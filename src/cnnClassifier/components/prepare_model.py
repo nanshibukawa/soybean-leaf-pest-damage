@@ -292,47 +292,64 @@ class PrepareModel:
         )
 
     def se_block(self, input_tensor, ratio=8):
+        """
+        Implementa bloco Squeeze-and-Excitation (SE).
+
+        Este bloco realiza recalibração de canais adaptativa através de dois passos:
+        1. Squeeze: Comprime informações espaciais usando GlobalAveragePooling2D
+        2. Excitation: Modela relacionamentos inter-canais com duas camadas Dense
+
+        O resultado é multiplicado element-wise com o tensor de entrada original.
+
+        Args:
+            input_tensor (tf.Tensor): Tensor de entrada com shape (batch, height, width, channels)
+            ratio (int): Fator de redução para o gargalo (bottleneck) no bloco SE.
+                        Default: 8. O número de neurônios na primeira Dense será
+                        filters // ratio. Deve ser >= 1.
+
+        Returns:
+            tf.Tensor: Tensor recalibrado com mesmo shape que input_tensor
+
+        Raises:
+            ValueError: Se ratio <= 0 ou se filters // ratio < 1
+
+        Nota:
+            A validação garante que filters // ratio >= 1 para evitar dimensões inválidas.
+        """
         filters = input_tensor.shape[-1]
+
+        # Validação: garantir que ratio é válido
+        if ratio <= 0:
+            raise ValueError(f"ratio deve ser positivo, recebido: {ratio}")
+
+        reduced_filters = filters // ratio
+        if reduced_filters < 1:
+            raise ValueError(
+                f"Número de filtros ({filters}) muito pequeno para ratio ({ratio}). "
+                f"filters // ratio deve ser >= 1, obteve {reduced_filters}. "
+                f"Considere usar ratio <= {filters}."
+            )
+
+        # Squeeze: comprime informações espaciais
         se = tf.keras.layers.GlobalAveragePooling2D()(input_tensor)
-        se = tf.keras.layers.Dense(filters // ratio, activation="relu")(se)
+
+        # Excitation: modela dependências inter-canais
+        se = tf.keras.layers.Dense(reduced_filters, activation="relu")(se)
         se = tf.keras.layers.Dense(filters, activation="sigmoid")(se)
+
+        # Reshape para compatibilidade com multiplicação
         se = tf.keras.layers.Reshape((1, 1, filters))(se)
+
+        # Recalibração: multiplicação element-wise
         return tf.keras.layers.multiply([input_tensor, se])
 
-    # TODO Implementar pruning, distillation_loss e make_gradcam_heatmap com TensorFlow Model Optimization, caso for utilizar em smarphones
-    # import tensorflow_model_optimization as tfmot
-
-    # def apply_pruning(self, model):
-    #     prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
-    #     pruning_params = {
-    #         "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
-    #             initial_sparsity=0.0, final_sparsity=0.5, begin_step=0, end_step=1000
-    #         )
-    #     }
-    #     model_pruned = prune_low_magnitude(model, **pruning_params)
-    #     return model_pruned
-
-    # Exemplo simplificado de distillation
-    # def distillation_loss(self, y_true, y_pred, teacher_pred, temperature=3, alpha=0.5):
-    #     soft_targets = tf.nn.softmax(teacher_pred / temperature)
-    #     student_soft = tf.nn.softmax(y_pred / temperature)
-    #     loss_soft = tf.keras.losses.KLDivergence()(soft_targets, student_soft)
-    #     loss_hard = tf.keras.losses.CategoricalCrossentropy()(y_true, y_pred)
-    #     return alpha * loss_hard + (1 - alpha) * loss_soft
-
-    # def make_gradcam_heatmap(img_array, model, last_conv_layer_name, pred_index=None):
-    #     grad_model = tf.keras.models.Model(
-    #         [model.inputs], [model.get_layer(last_conv_layer_name).output, model.output]
-    #     )
-    #     with tf.GradientTape() as tape:
-    #         conv_outputs, predictions = grad_model(img_array)
-    #         if pred_index is None:
-    #             pred_index = tf.argmax(predictions[0])
-    #         class_channel = predictions[:, pred_index]
-    #     grads = tape.gradient(class_channel, conv_outputs)
-    #     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
-    #     conv_outputs = conv_outputs[0]
-    #     heatmap = conv_outputs @ pooled_grads[..., tf.newaxis]
-    #     heatmap = tf.squeeze(heatmap)
-    #     heatmap = tf.maximum(heatmap, 0) / tf.math.reduce_max(heatmap)
-    #     return heatmap.numpy()
+    # TODO: Implementar, se necessário para implantação em smartphones:
+    # - Pruning do modelo utilizando TensorFlow Model Optimization (TFMOT) para
+    #   reduzir o tamanho e o custo de inferência.
+    # - Função de distillation loss baseada em um modelo professor (teacher) para
+    #   treinar um modelo aluno (student) mais compacto.
+    # - Geração de mapas de calor Grad-CAM para explicar visualmente as decisões
+    #   do modelo em imagens de entrada.
+    #
+    # As implementações devem ser adicionadas aqui como métodos da classe
+    # `PrepareModel` quando os requisitos de implantação exigirem esses recursos.
