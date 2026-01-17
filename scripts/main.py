@@ -3,11 +3,6 @@ from pathlib import Path
 import warnings
 
 
-# 🔇 CONFIGURAÇÕES TF NO INÍCIO
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
-
 from cnnClassifier.config.constants import DATA_SOURCE_DIR
 from cnnClassifier.pipeline.stage_01_data_ingestion import DataIngestionPipeline
 from cnnClassifier.pipeline.stage_02_data_splitting import DataSplittingPipeline
@@ -18,7 +13,13 @@ from cnnClassifier.pipeline.stage_05_model_evaluation import ModelEvaluationPipe
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ImageConfig, ModelConfig
 
+# 🔇 CONFIGURAÇÕES TF NO INÍCIO
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
+
 logger = configure_logger(__name__)
+
 
 def main():
     logger.info("🚀 Iniciando pipeline de machine learning...")

@@ -12,23 +12,22 @@ dependencies = [
     "seaborn",
     "scikit-learn",
     "scipy",
-    
     # Web framework (for future API)
     "Flask",
     "Flask-Cors",
-    
     # Utility libraries
     "tqdm",
     "ensure==1.0.2",
     "joblib",
     "types-PyYAML",
     "setuptools",
-    
-    # Future image processing dependencies (currently unused but planned)
-    # Uncomment when needed:
-    # "opencv-python",      # Computer vision operations
-    # "Pillow",             # Image processing
-    # "albumentations",     # Image augmentation
+    "pip>=25.3",
+    "loguru>=0.7.3",
+    "pydantic>=2.12.5",
+    "typer>=0.20.0",
+    "keras-tuner>=1.4.8",
+    "gdown>=5.2.1",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]

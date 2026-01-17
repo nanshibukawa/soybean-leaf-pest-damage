@@ -78,6 +78,21 @@ class ModelConfig(BaseModel):
     horizontal_flip: bool = Field(True, description="Flip horizontal")
     rotation_factor: float = Field(0.05, description="Fator de rotação")
     zoom_factor: float = Field(..., description="Fator de zoom")
+    brightness_range: Optional[List[float]] = Field(
+        default=None, description="Faixa de brilho para augmentation"
+    )
+    rotation_range: Optional[float] = Field(
+        default=None, description="Ângulo máximo de rotação (graus)"
+    )
+    zoom_range: Optional[List[float]] = Field(
+        default=None, description="Faixa de zoom adicional"
+    )
+    contrast_range: Optional[List[float]] = Field(
+        default=None, description="Faixa de contraste para augmentation"
+    )
+    gaussian_noise: Optional[float] = Field(
+        default=None, description="Desvio padrão do ruído gaussiano"
+    )
 
     @classmethod
     def from_yaml(cls, config_path: str, experiment: Optional[str] = None):
@@ -138,6 +153,8 @@ class ModelConfig(BaseModel):
                 zoom_range=config["augmentation"].get("zoom_range"),
                 brightness_range=config["augmentation"].get("brightness_range"),
                 rotation_range=config["augmentation"].get("rotation_range"),
+                contrast_range=config["augmentation"].get("contrast_range"),
+                gaussian_noise=config["augmentation"].get("gaussian_noise"),
             )
         except KeyError as e:
             raise ValueError(f"🚨 Campo obrigatório faltando no YAML: {e}")
