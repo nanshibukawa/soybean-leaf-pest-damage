@@ -73,26 +73,71 @@ class PrepareModel:
 
         inputs = tf.keras.layers.Input(shape=self.image_config.size_tuple)
 
-        # Gaussian Noise
-        if (
-            hasattr(self.model_config, "gaussian_noise")
-            and self.model_config.gaussian_noise
-        ):
-            noise_std = self.model_config.gaussian_noise
-        else:
-            noise_std = 0.05
-        logger.info(f"Adicionando Gaussian Noise: {noise_std}")
+        # x = tf.keras.layers.Rescaling(1.0 / 255)(inputs)
+        # x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(inputs)
 
-        x = tf.keras.layers.GaussianNoise(noise_std)(inputs)
+        x = inputs
+
+        # use_data_augmentation = getattr(
+        #     self.model_config, "use_data_augmentation", False
+        # )
+        # logger.info(f"🔒 Using Data Augmentation: {use_data_augmentation}")
+
+        # if use_data_augmentation:
+        # Gaussian Noise
+        # if (
+        #     hasattr(self.model_config, "gaussian_noise")
+        #     and self.model_config.gaussian_noise
+        # ):
+        #     noise_std = self.model_config.gaussian_noise
+        # else:
+        #     noise_std = 0.05
+        # logger.info(f"Adicionando Gaussian Noise: {noise_std}")
+
+        # x = tf.keras.layers.GaussianNoise(noise_std)(x)
 
         x = self.data_augmentation(x)
 
+        # Normalização condicional baseada no modelo
+        model_name = self.model_config.model_name.lower()
+        
+        # Modelos que esperam entrada [0, 1]: VGG, EfficientNet
+        if "vgg" in model_name or "efficientnet" in model_name:
+            x = tf.keras.layers.Rescaling(1.0 / 255)(x)
+            logger.info(
+                f"✅ Normalização [0,1]: Rescaling(1/255) para {self.model_config.model_name}"
+            )
+        # Modelos que esperam entrada [-1, 1]: MobileNet, Inception, NASNet
+        elif any(keyword in model_name for keyword in ["mobilenet", "inception", "nasnet"]):
+            x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(x)
+            logger.info(
+                f"✅ Normalização [-1,1]: Rescaling(2/255, -1) para {self.model_config.model_name}"
+            )
+        else:
+            logger.warning(
+                f"⚠️ Modelo '{self.model_config.model_name}' sem normalização específica - pulando"
+            )
+
         # Modelo pré-treinado
         x = modelo_base(x, training=False)
-        # Blocos compressions após o backbone
-        x = self._compression_block(32)(x)
-        x = self.se_block(x)
-        x = self._compression_block(64)(x)
+
+        use_compression_blocks = getattr(
+            self.model_config, "use_compression_blocks", False
+        )
+        use_se_block = getattr(self.model_config, "use_se_block", False)
+
+        logger.info(f"🔒 Using Compression Blocks: {use_compression_blocks}")
+        logger.info(f"🔒 Using Squeeze-and-Excitation (SE) Block: {use_se_block}")
+
+        # Blocos compressions e SE após o backbone (condicionais)
+        if use_compression_blocks:
+            x = self._compression_block(32)(x)
+            if use_se_block:
+                x = self.se_block(x)
+            x = self._compression_block(64)(x)
+        elif use_se_block:
+            x = self.se_block(x)
+
         x = tf.keras.layers.GlobalAveragePooling2D()(x)
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
         x = tf.keras.layers.Flatten()(x)
@@ -179,8 +224,21 @@ class PrepareModel:
             hasattr(self.model_config, "augmentation_enabled")
             and not self.model_config.augmentation_enabled
         ):
-            logger.info("Data Augmentation desabilitado via config")
+            logger.info("🔒 Data Augmentation desabilitado via config")
+            # layers.append(tf.keras.layers.Lambda(lambda x: x))
+            # return tf.keras.layers.Activation("linear")
             return tf.keras.Sequential(layers)
+
+        # if (
+        #     hasattr(self.model_config, "gaussian_noise")
+        #     and self.model_config.gaussian_noise
+        # ):
+        #     noise_std = self.model_config.gaussian_noise
+        # else:
+        #     noise_std = 0.05
+        # logger.info(f"Adicionando Gaussian Noise: {noise_std}")
+        # layers.append(tf.keras.layers.GaussianNoise(noise_std))
+        # x = tf.keras.layers.GaussianNoise(noise_std)(x)
 
         if (
             hasattr(self.model_config, "horizontal_flip")
@@ -227,7 +285,7 @@ class PrepareModel:
             logger.info("Data Augmentation: RandomRotation adicionado")
 
         data_augmentation = tf.keras.Sequential(layers)
-        logger.info("Data augmentation configurado")
+        logger.info("🔒 Data augmentation configurado")
 
         return data_augmentation
 
@@ -244,34 +302,87 @@ class PrepareModel:
         """
         model_name = self.model_config.model_name.lower()
 
-        if "mobilenet" in model_name:
-            modelo_base = tf.keras.applications.MobileNetV3Large(
-                input_shape=self.image_config.size_tuple,
-                include_top=include_top,
-                weights=weights,
-            )
-        elif "inception" in model_name:
-            modelo_base = tf.keras.applications.InceptionV3(
-                input_shape=self.image_config.size_tuple,
-                include_top=include_top,
-                weights=weights,
-            )
-        elif "vgg" in model_name:
-            modelo_base = tf.keras.applications.VGG19(
-                input_shape=self.image_config.size_tuple,
-                include_top=include_top,
-                weights=weights,
-            )
-        else:
-            # Default para MobileNet
-            modelo_base = tf.keras.applications.MobileNetV3Large(
-                input_shape=self.image_config.size_tuple,
-                include_top=include_top,
-                weights=weights,
+        models = {
+            "mobilenetv3large": tf.keras.applications.MobileNetV3Large,
+            "mobilenetv3small": tf.keras.applications.MobileNetV3Small,
+            "inceptionv3": tf.keras.applications.InceptionV3,
+            "vgg19": tf.keras.applications.VGG19,
+            "nasnetlarge": tf.keras.applications.NASNetLarge,
+            "nasnetmobile": tf.keras.applications.NASNetMobile,
+            "efficientnetb0": tf.keras.applications.EfficientNetB0,
+            "efficientnetb7": tf.keras.applications.EfficientNetB7,
+        }
+        model_class = models.get(model_name)
+
+        # Fallback: busca por substring (ex: "mobilenet" -> "mobilenetv3large")
+        if model_class is None:
+            for key, cls in models.items():
+                if key in model_name or model_name in key:
+                    model_class = cls
+                    logger.info(f"🔍 Modelo encontrado por substring: {key}")
+                    break
+
+        # Default: MobileNetV3Large
+        if model_class is None:
+            model_class = tf.keras.applications.MobileNetV3Large
+            logger.warning(
+                f"⚠️ Modelo '{model_name}' não reconhecido. Usando MobileNetV3Large."
             )
 
-        logger.info(f"Modelo base {model_name} carregado")
+        # Parâmetros comuns
+        comuns_params = {
+            "input_shape": self.image_config.size_tuple,
+            "include_top": include_top,
+            "weights": weights,
+        }
+
+        # Parâmetros extras para modelos específicos
+        if model_name in [
+            "nasnetlarge",
+            "nasnetmobile",
+            "efficientnetb0",
+            "efficientnetb7",
+        ]:
+            comuns_params["input_tensor"] = None
+            comuns_params["pooling"] = None
+
+        # Instancia APENAS o modelo necessário
+        modelo_base = model_class(**comuns_params)
+        logger.info(f"✅ Modelo base {model_class.__name__} carregado")
+
         return modelo_base
+        # if "mobilenet" in model_name:
+        #     modelo_base = tf.keras.applications.MobileNetV3Large(
+        #         # modelo_base = tf.keras.applications.MobileNetV3Small(
+        #         input_shape=self.image_config.size_tuple,
+        #         include_top=include_top,
+        #         weights=weights,
+        #         # include_preprocessing=False,
+        #     )
+        #     logger.info("🧠 Using model: MobileNetV3Large")
+        # elif "inception" in model_name:
+        #     modelo_base = tf.keras.applications.InceptionV3(
+        #         input_shape=self.image_config.size_tuple,
+        #         include_top=include_top,
+        #         weights=weights,
+        #     )
+        # elif "vgg" in model_name:
+        #     modelo_base = tf.keras.applications.VGG19(
+        #         input_shape=self.image_config.size_tuple,
+        #         include_top=include_top,
+        #         weights=weights,
+        #     )
+        # else:
+        #     # Default para MobileNet
+        #     modelo_base = tf.keras.applications.MobileNetV3Large(
+        #         input_shape=self.image_config.size_tuple,
+        #         include_top=include_top,
+        #         weights=weights,
+        #         # include_preprocessing=False,
+        #     )
+
+        # logger.info(f"Modelo base {model_name} carregado")
+        # return modelo_base
 
     def _compression_block(self, filters, kernel_size=3, strides=1):
         return tf.keras.Sequential(

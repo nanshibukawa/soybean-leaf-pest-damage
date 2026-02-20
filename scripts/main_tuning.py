@@ -40,9 +40,13 @@ def main(
         "tune",
         help="Modo de execução: 'tune' (busca + retreino) ou 'retrain' (somente retreino com HPs salvos)",
     ),
+    experiment: str = typer.Option(
+        "mobilenetv3large",
+        help="Nome do experimento no YAML (ex: mobilenetv3large, efficientnetb0, vgg19)",
+    ),
     best_hp_path: Path = typer.Option(
-        Path("artifacts/tuning/best_hyperparameters.json"),
-        help="Caminho para o JSON com os melhores hiperparâmetros",
+        None,  # Será construído dinamicamente se None
+        help="Caminho para o JSON com os melhores hiperparâmetros (auto: artifacts/tuning/best_hyperparameters_<model>.json)",
     ),
     max_trials: int = typer.Option(30, help="Número máximo de trials na busca"),
     epochs_per_trial: int = typer.Option(30, help="Épocas por trial na busca"),
@@ -56,10 +60,17 @@ def main(
 
         # ===== STAGE 0: Load Configs =====
         logger.info("\n📋 === Stage 0: Carregando Configurações ===")
-        model_config = ModelConfig.from_yaml(
-            "model_params.yaml", experiment="mobilenet"
+        model_config = ModelConfig.from_yaml("model_params.yaml", experiment=experiment)
+        logger.info(
+            f"✅ Configuração carregada: Experimento '{experiment}' - Modelo {model_config.model_name}"
         )
-        logger.info(f"✅ Configuração carregada: {model_config.model_name}")
+
+        # Construir path dos HPs se não fornecido
+        if best_hp_path is None:
+            best_hp_path = Path(
+                f"artifacts/tuning/best_hyperparameters_{model_config.model_name}.json"
+            )
+            logger.info(f"📝 Path de HPs (auto): {best_hp_path}")
 
         image_config = ImageConfig(
             altura=model_config.image_size[0],
@@ -123,7 +134,7 @@ def main(
 
             # 4b) Salvar melhores hiperparâmetros
             logger.info("💾 Salvando melhores hiperparâmetros...")
-            tuner.save_best_hyperparameters()
+            tuner.save_best_hyperparameters(model_name=model_config.model_name)
 
             # 4c) Retreinar com melhores hiperparâmetros
             logger.info("📈 Fase 2/3: Retreinando modelo final...")

@@ -62,6 +62,17 @@ class ModelConfig(BaseModel):
     class_weights: Optional[Dict[int, float]] = None
     use_pretrained: bool = Field(default=True, description="Usar modelo pré-treinado")
 
+    # Model head options
+    use_compression_blocks: bool = Field(
+        default=True, description="Usar blocos de compressão após o backbone"
+    )
+    use_se_block: bool = Field(
+        default=True, description="Usar bloco Squeeze-and-Excitation"
+    )
+    # use_data_augmentation: bool = Field(
+    #     default=True, description="Usar data augmentation no modelo"
+    # )
+
     # Otimizador e compilação
     optimizer_name: str = Field(..., description="Nome do otimizador")
     optimizer_params: Optional[dict] = Field(
@@ -92,6 +103,15 @@ class ModelConfig(BaseModel):
     )
     gaussian_noise: Optional[float] = Field(
         default=None, description="Desvio padrão do ruído gaussiano"
+    )
+    class_specific_augmentation: Optional[Dict[str, dict]] = Field(
+        default=None, 
+        description="Augmentation específico por classe. Ex: {'Healthy': {'rotation_range': 45}}"
+    )
+
+    # Fine-tuning
+    unfreeze_last_n_layers: int = Field(
+        default=20, description="Número de camadas finais a descongelar"
     )
 
     @classmethod
@@ -134,6 +154,13 @@ class ModelConfig(BaseModel):
                 random_seed=config["random_seed"],
                 class_weights=class_weights,
                 use_pretrained=config["model"].get("use_pretrained", True),
+                use_compression_blocks=config["model"].get(
+                    "use_compression_blocks", True
+                ),
+                use_se_block=config["model"].get("use_se_block", True),
+                # use_data_augmentation=config["model"].get(
+                #     "use_data_augmentation", True
+                # ),
                 # Optimizer
                 optimizer_name=config["optimizer"]["name"],
                 optimizer_params={
@@ -155,6 +182,10 @@ class ModelConfig(BaseModel):
                 rotation_range=config["augmentation"].get("rotation_range"),
                 contrast_range=config["augmentation"].get("contrast_range"),
                 gaussian_noise=config["augmentation"].get("gaussian_noise"),
+                class_specific_augmentation=config["augmentation"].get("class_specific"),
+                unfreeze_last_n_layers=config["tuning"]
+                .get("unfreeze_last_n_layers", {})
+                .get("min", 20),
             )
         except KeyError as e:
             raise ValueError(f"🚨 Campo obrigatório faltando no YAML: {e}")

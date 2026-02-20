@@ -49,15 +49,60 @@ pip install .[image-processing]
 
 ## 📝 Uso
 
+### Pipeline Completo
 ```bash
-# Executar pipeline completo
+# Executar pipeline completo com configuração padrão
 python scripts/main.py
+```
 
-# Tuning de hiperparâmetros (com opções)
-python scripts/main_tuning.py --mode tune --max-trials 30 --epochs-per-trial 30 --final-epochs 100
+### Tuning de Hiperparâmetros
 
-# Retreinar modelo com hiperparâmetros já encontrados
-python scripts/main_tuning.py --mode retrain --best-hp-path artifacts/tuning/best_hyperparameters.json
+**Testar diferentes modelos:**
+```bash
+# MobileNetV3 Large (padrão - rápido e eficiente)
+python scripts/main_tuning.py --experiment mobilenetv3large
+
+# MobileNetV3 Small (ultra-leve para mobile)
+python scripts/main_tuning.py --experiment mobilenetv3small
+
+# InceptionV3 (multi-escala, 299x299)
+python scripts/main_tuning.py --experiment inceptionv3
+
+# VGG19 (clássico, preciso mas pesado)
+python scripts/main_tuning.py --experiment vgg19
+
+# EfficientNet B0 (balanço performance/eficiência)
+python scripts/main_tuning.py --experiment efficientnetb0
+
+# EfficientNet B7 (máxima precisão, mais pesado)
+python scripts/main_tuning.py --experiment efficientnetb7
+
+# NASNet Mobile (AutoML, mobile-friendly)
+python scripts/main_tuning.py --experiment nasnetmobile
+
+# NASNet Large (AutoML, alta performance)
+python scripts/main_tuning.py --experiment nasnetlarge
+
+# MobileNet com compression blocks + SE
+python scripts/main_tuning.py --experiment mobilenet_advanced
+```
+
+**Ajustar parâmetros de busca:**
+```bash
+python scripts/main_tuning.py \
+    --experiment efficientnetb0 \
+    --max-trials 50 \
+    --epochs-per-trial 20 \
+    --final-epochs 150
+```
+
+**Retreinar com hiperparâmetros salvos:**
+```bash
+# Retreinar com o mesmo experimento
+python scripts/main_tuning.py \
+    --mode retrain \
+    --experiment mobilenetv3large \
+    --best-hp-path artifacts/tuning/best_hyperparameters.json
 ```
 
 ## 📊 Dataset
