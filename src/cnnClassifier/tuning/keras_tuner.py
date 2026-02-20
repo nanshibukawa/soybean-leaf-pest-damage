@@ -79,17 +79,18 @@ class KerasTunerSearch:
         # Descongelar últimas camadas do BACKBONE
         if unfreeze_last_n > 0:
             backbone = None
-            # Procurar pela camada MobileNetV3 dentro do modelo
+            # Procurar backbone pré-treinado (funciona com qualquer modelo)
+            backbone_keywords = ["mobilenet", "inception", "vgg", "nasnet", "efficientnet", "resnet"]
+            
             for layer in model.layers:
-                if (
-                    isinstance(layer, tf.keras.Model)
-                    and "mobilenet" in layer.name.lower()
-                ):
-                    backbone = layer
-                    logger.info(
-                        f"Backbone encontrado: {layer.name} ({len(layer.layers)} camadas)"
-                    )
-                    break
+                if isinstance(layer, tf.keras.Model):
+                    layer_name_lower = layer.name.lower()
+                    if any(keyword in layer_name_lower for keyword in backbone_keywords):
+                        backbone = layer
+                        logger.info(
+                            f"🧠 Backbone encontrado: {layer.name} ({len(layer.layers)} camadas)"
+                        )
+                        break
 
             if backbone is not None:
                 total_layers = len(backbone.layers)
@@ -102,14 +103,15 @@ class KerasTunerSearch:
                     if hasattr(layer, "kernel_regularizer"):
                         layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
                 logger.info(
-                    f"Backbone fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas com L2={l2_reg:.6f}"
+                    f"✅ Backbone fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas com L2={l2_reg:.6f}"
                 )
             else:
-                logger.warning("Backbone MobileNetV3 não identificado")
+                logger.warning("⚠️  Backbone pré-treinado não identificado - usando fallback")
                 # Fallback: unfreeze últimas camadas treináveis do modelo
                 trainable_layers = [l for l in model.layers if l.trainable]
                 for layer in trainable_layers[-unfreeze_last_n:]:
                     layer.trainable = True
+                logger.info(f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas")
 
         # Compilar usando mesmas definições do pipeline principal
         # TODO: implementar função com outros otimizadores, e chamar a função
@@ -216,13 +218,17 @@ class KerasTunerSearch:
 
         # Descongelar últimas camadas do BACKBONE
         backbone = None
+        backbone_keywords = ["mobilenet", "inception", "vgg", "nasnet", "efficientnet", "resnet"]
+        
         for layer in model.layers:
-            if isinstance(layer, tf.keras.Model) and "mobilenet" in layer.name.lower():
-                backbone = layer
-                logger.info(
-                    f"Backbone encontrado no retreino: {layer.name} ({len(layer.layers)} camadas)"
-                )
-                break
+            if isinstance(layer, tf.keras.Model):
+                layer_name_lower = layer.name.lower()
+                if any(keyword in layer_name_lower for keyword in backbone_keywords):
+                    backbone = layer
+                    logger.info(
+                        f"🧠 Backbone encontrado no retreino: {layer.name} ({len(layer.layers)} camadas)"
+                    )
+                    break
 
         if backbone is not None:
             total_layers = len(backbone.layers)
@@ -235,10 +241,10 @@ class KerasTunerSearch:
             for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
                 layer.trainable = True
             logger.info(
-                f"Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
+                f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
             )
         else:
-            logger.warning("Backbone MobileNetV3 não encontrado no retreino")
+            logger.warning("⚠️  Backbone pré-treinado não encontrado no retreino - usando fallback")
 
         # Recompilar com LR fixo (pipeline)
         model.compile(
@@ -288,25 +294,25 @@ class KerasTunerSearch:
             verbose=1,
         )
 
-        # Salvar modelo
-        output_dir = Path("artifacts/models")
+        # Salvar modelo em múltiplos formatos
+        output_dir = Path("artifacts/models/mobile")
         output_dir.mkdir(parents=True, exist_ok=True)
-        model_path = (
-            output_dir / f"{self.model_config.model_name}_keras_tuner_best.keras"
-        )
-        model.save(model_path)
 
-        logger.info(f"✅ Modelo final salvo em: {model_path}")
+        self.save_multiple_formats(
+            model, output_dir, self.model_config.model_name, train_ds
+        )
 
         self.best_model = model
         return model, history
 
-    def save_best_hyperparameters(self, save_dir: str = "artifacts/tuning"):
+    def save_best_hyperparameters(
+        self, model_name: str, save_dir: str = "artifacts/tuning"
+    ):
         """Salva melhores hiperparâmetros em JSON."""
         if self.best_hp is None:
             raise ValueError("Execute .search() antes")
 
-        save_path = Path(save_dir) / "best_hyperparameters.json"
+        save_path = Path(save_dir) / f"best_hyperparameters_{model_name}.json"
         save_path.parent.mkdir(parents=True, exist_ok=True)
 
         best_params = {
@@ -325,3 +331,108 @@ class KerasTunerSearch:
             json.dump(best_params, f, indent=2)
 
         logger.info(f"✅ Hiperparâmetros salvos em: {save_path}")
+
+    def save_multiple_formats(
+        self, model, output_dir, model_name: str, train_dataset=None
+    ):
+        """
+        Salva modelo em múltiplos formatos para diferentes use cases.
+
+        Args:
+            model: Modelo Keras treinado
+            output_dir: Diretório para salvar os modelos
+            model_name: Nome base do modelo
+            train_dataset: Dataset de treinamento para calibração do TFLite (opcional)
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info("\n" + "=" * 70)
+        logger.info("💾 SALVANDO MODELO EM MÚLTIPLOS FORMATOS")
+        logger.info("=" * 70)
+
+        # 1. H5 (Keras legado) - Para retreino
+        logger.info("\n1️⃣ Salvando H5 (legado Keras)...")
+        h5_path = output_dir / f"{model_name}_keras_tuner_best.h5"
+        model.save(h5_path)
+        h5_size = h5_path.stat().st_size / (1024 * 1024)
+        logger.info(f"   ✅ {h5_path.name} ({h5_size:.2f} MB)")
+
+        # 2. .keras (Nativo TF 2.8+) - Recomendado
+        logger.info("\n2️⃣ Salvando .keras (formato nativo TF 2.8+)...")
+        keras_path = output_dir / f"{model_name}_keras_tuner_best.keras"
+        model.save(keras_path)
+        keras_size = keras_path.stat().st_size / (1024 * 1024)
+        logger.info(f"   ✅ {keras_path.name} ({keras_size:.2f} MB)")
+
+        # 4. TFLite (mobile/edge) - Com quantização FP16
+        logger.info("\n4️⃣ Salvando TFLite (mobile/edge)...")
+        try:
+            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            converter.target_spec.supported_types = [tf.float16]
+
+            tflite_model = converter.convert()
+
+            tflite_path = output_dir / f"{model_name}_keras_tuner_best.tflite"
+            with open(tflite_path, "wb") as f:
+                f.write(tflite_model)
+
+            tflite_size = tflite_path.stat().st_size / (1024 * 1024)
+            reduction = (1 - tflite_size / keras_size) * 100
+            logger.info(
+                f"   ✅ {tflite_path.name} ({tflite_size:.2f} MB, {reduction:.1f}% redução)"
+            )
+            logger.info("   📝 Quantização FP16 (16-bit floating point)")
+        except Exception as e:
+            logger.warning(f"   ⚠️ TFLite falhou: {e}")
+
+        # 5. ONNX (opcional) - Portabilidade
+        logger.info("\n5️⃣ Tentando salvar ONNX (portabilidade)...")
+        try:
+            import tf2onnx
+            import onnx
+
+            spec = (tf.TensorSpec((None, 224, 224, 3), tf.float32, name="input"),)
+            output_path = tf2onnx.convert.from_keras(model, input_signature=spec)
+            onnx_model = onnx.load(output_path)
+
+            onnx_path = output_dir / f"{model_name}_keras_tuner_best.onnx"
+            onnx.save(onnx_model, str(onnx_path))
+            onnx_size = onnx_path.stat().st_size / (1024 * 1024)
+            logger.info(f"   ✅ {onnx_path.name} ({onnx_size:.2f} MB)")
+        except ImportError:
+            logger.info(
+                "   ⚠️ tf2onnx não instalado (opcional). "
+                "Instale com: pip install tf2onnx onnx"
+            )
+        except Exception as e:
+            logger.warning(f"   ⚠️ ONNX falhou: {e}")
+
+        # Resumo
+        logger.info("\n" + "=" * 70)
+        logger.info("📦 RESUMO DOS FORMATOS SALVOS:")
+        logger.info("=" * 70)
+        logger.info(f"\n📁 Diretório: {output_dir}")
+        logger.info("\n┌─ DESENVOLVIMENTO:")
+        logger.info(
+            f"│  H5       {h5_size:6.2f} MB   - Para retreino (compatível com Keras/TF)"
+        )
+        logger.info(
+            f"│  .keras   {keras_size:6.2f} MB   - Formato nativo TF 2.8+ (✅ recomendado)"
+        )
+        logger.info("│")
+        logger.info("├─ SERVIDORES:")
+        logger.info("│  SavedModel .pb  - Para TensorFlow Serving / APIs REST")
+        logger.info("│")
+        logger.info("├─ MOBILE/EDGE:")
+        if "tflite_size" in locals():
+            logger.info(
+                f"│  TFLite    {tflite_size:6.2f} MB   - ⚡ Rápido, compacto (Android/iOS)"
+            )
+        else:
+            logger.info("│  TFLite              - (falhou na conversão)")
+        logger.info("│")
+        logger.info("└─ PORTABILIDADE:")
+        logger.info("   ONNX              - Multiplataforma (Windows/Linux/Web)")
+        logger.info("\n" + "=" * 70)
