@@ -63,7 +63,8 @@ augmentation:
 dataset:
   classes: 3
   train_ratio: 0.8
-  val_ratio: 0.2
+  val_ratio: 0.1
+  test_ratio: 0.1
 
 tuning:
   max_trials: 30

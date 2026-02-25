@@ -18,6 +18,8 @@ notebooks/*.ipynb
 data/raw/
 data/processed/
 artifacts/
+mlruns/
+streamlit/
 
 # OS generated files
 .DS_Store

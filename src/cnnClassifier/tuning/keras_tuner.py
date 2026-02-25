@@ -80,12 +80,21 @@ class KerasTunerSearch:
         if unfreeze_last_n > 0:
             backbone = None
             # Procurar backbone pré-treinado (funciona com qualquer modelo)
-            backbone_keywords = ["mobilenet", "inception", "vgg", "nasnet", "efficientnet", "resnet"]
-            
+            backbone_keywords = [
+                "mobilenet",
+                "inception",
+                "vgg",
+                "nasnet",
+                "efficientnet",
+                "resnet",
+            ]
+
             for layer in model.layers:
                 if isinstance(layer, tf.keras.Model):
                     layer_name_lower = layer.name.lower()
-                    if any(keyword in layer_name_lower for keyword in backbone_keywords):
+                    if any(
+                        keyword in layer_name_lower for keyword in backbone_keywords
+                    ):
                         backbone = layer
                         logger.info(
                             f"🧠 Backbone encontrado: {layer.name} ({len(layer.layers)} camadas)"
@@ -106,12 +115,16 @@ class KerasTunerSearch:
                     f"✅ Backbone fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas com L2={l2_reg:.6f}"
                 )
             else:
-                logger.warning("⚠️  Backbone pré-treinado não identificado - usando fallback")
+                logger.warning(
+                    "⚠️  Backbone pré-treinado não identificado - usando fallback"
+                )
                 # Fallback: unfreeze últimas camadas treináveis do modelo
                 trainable_layers = [l for l in model.layers if l.trainable]
                 for layer in trainable_layers[-unfreeze_last_n:]:
                     layer.trainable = True
-                logger.info(f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas")
+                logger.info(
+                    f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas"
+                )
 
         # Compilar usando mesmas definições do pipeline principal
         # TODO: implementar função com outros otimizadores, e chamar a função
@@ -218,8 +231,15 @@ class KerasTunerSearch:
 
         # Descongelar últimas camadas do BACKBONE
         backbone = None
-        backbone_keywords = ["mobilenet", "inception", "vgg", "nasnet", "efficientnet", "resnet"]
-        
+        backbone_keywords = [
+            "mobilenet",
+            "inception",
+            "vgg",
+            "nasnet",
+            "efficientnet",
+            "resnet",
+        ]
+
         for layer in model.layers:
             if isinstance(layer, tf.keras.Model):
                 layer_name_lower = layer.name.lower()
@@ -244,7 +264,9 @@ class KerasTunerSearch:
                 f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
             )
         else:
-            logger.warning("⚠️  Backbone pré-treinado não encontrado no retreino - usando fallback")
+            logger.warning(
+                "⚠️  Backbone pré-treinado não encontrado no retreino - usando fallback"
+            )
 
         # Recompilar com LR fixo (pipeline)
         model.compile(

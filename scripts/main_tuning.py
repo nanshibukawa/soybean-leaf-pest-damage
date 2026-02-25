@@ -5,6 +5,9 @@ import warnings
 import json
 import keras_tuner as kt
 import typer
+import random
+import numpy as np
+import tensorflow as tf
 
 from cnnClassifier.config.constants import DATA_SOURCE_DIR
 from cnnClassifier.pipeline.stage_01_data_ingestion import DataIngestionPipeline
@@ -20,16 +23,16 @@ from cnnClassifier.entity.config_entity import (
 from cnnClassifier.components.data_splitter import DataSplitter
 from cnnClassifier.tuning.keras_tuner import KerasTunerSearch
 
+import mlflow
+
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 
+# 📊 Habilitar MLflow System Metrics Logging
+os.environ["MLFLOW_ENABLE_SYSTEM_METRICS_LOGGING"] = "true"
 
-# 🔇 CONFIGURAÇÕES TF NO INÍCIO (antes de importar TensorFlow)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
-warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 logging.getLogger("tensorflow").setLevel(logging.ERROR)
 
 logger = configure_logger(__name__)
@@ -51,6 +54,7 @@ def main(
     max_trials: int = typer.Option(30, help="Número máximo de trials na busca"),
     epochs_per_trial: int = typer.Option(30, help="Épocas por trial na busca"),
     final_epochs: int = typer.Option(100, help="Épocas no retreino final"),
+    # use_mlflow: bool = typer.Option(False, help="Ativar logging no MLflow"),
 ):
     logger.info("=" * 80)
     logger.info("🚀 PIPELINE DE TUNING - Keras Tuner com Bayesian Optimization")
@@ -65,172 +69,283 @@ def main(
             f"✅ Configuração carregada: Experimento '{experiment}' - Modelo {model_config.model_name}"
         )
 
-        # Construir path dos HPs se não fornecido
-        if best_hp_path is None:
-            best_hp_path = Path(
-                f"artifacts/tuning/best_hyperparameters_{model_config.model_name}.json"
-            )
-            logger.info(f"📝 Path de HPs (auto): {best_hp_path}")
+        seed = model_config.random_seed
+        random.seed(seed)
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
+        logger.info(f"🎲 Seed global definido: {seed}")
 
-        image_config = ImageConfig(
-            altura=model_config.image_size[0],
-            largura=model_config.image_size[1],
-            canais=model_config.image_size[2],
-            data_dir=Path(DATA_SOURCE_DIR),
-        )
+        # if use_mlflow:
 
-        # ===== STAGE 1: DATA INGESTION =====
-        logger.info("\n🔄 === Stage 1: Data Ingestion ===")
-        data_ingestion = DataIngestionPipeline()
-        stage1_result = data_ingestion.main()
+        mlflow.set_tracking_uri("file:./mlruns")
+        mlflow.set_experiment(f"tuning-{experiment}")
 
-        if isinstance(stage1_result, Path):
-            logger.info(f"✅ Stage 1 completo: {stage1_result}")
-        else:
-            logger.info(f"✅ Stage 1 completo: {stage1_result}")
+        # 📊 Configurar coleta de system metrics
+        mlflow.set_system_metrics_sampling_interval(10)  # Coletar a cada 10 segundos
+        mlflow.set_system_metrics_samples_before_logging(1)  # Logar após cada coleta
 
-        # ===== STAGE 2: DATA SPLITTING =====
-        logger.info("\n🔄 === Stage 2: Data Splitting ===")
-        data_splitting = DataSplittingPipeline(
-            config=model_config, image_config=image_config
-        )
-        stage2_result = data_splitting.main()
+        with mlflow.start_run(
+            run_name=f"{model_config.model_name}-{mode}", log_system_metrics=True
+        ):
+            mlflow.log_param("model_name", model_config.model_name)
+            mlflow.log_param("image_size", str(model_config.image_size))
+            mlflow.log_param("batch_size", model_config.batch_size)
+            mlflow.log_param("max_trials", max_trials)
+            mlflow.log_param("epochs_per_trial", epochs_per_trial)
 
-        if stage2_result["success"]:
-            logger.info("✅ Stage 2 completo!")
-        else:
-            logger.error(f"❌ Stage 2 falhou: {stage2_result['error']}")
-            return stage2_result
-
-        # ===== STAGE 3: SKIP PrepareModel =====
-        # Keras Tuner cria modelos internamente com hiperparâmetros variados
-        logger.info("=== Stage 3: PULADO (tuner cria modelos internamente) ===")
-
-        # ===== STAGE 4: KERAS TUNER (Search + Retrain) =====
-        logger.info("=== Stage 4: Keras Tuner - Busca e Retreino ===")
-
-        # Preparar data splitter para o tuner
-        data_splitter_config = DataSplitterConfig(
-            batch_size=model_config.batch_size or 32,
-            random_seed=model_config.random_seed,
-            train_ratio=model_config.train_ratio,
-            val_ratio=model_config.val_ratio,
-        )
-
-        data_splitter = DataSplitter(
-            data_split_config=data_splitter_config,
-            image_config=image_config,
-            subset=DataSubsetType,
-        )
-
-        # Inicializar tuner
-        logger.info("🔧 Inicializando Keras Tuner...")
-        tuner = KerasTunerSearch(model_config, data_splitter)
-
-        if mode == "tune":
-            # 4a) Busca de hiperparâmetros
-            logger.info("🔍 Fase 1/3: Busca de hiperparâmetros...")
-            tuner.search(max_trials=max_trials, epochs_per_trial=epochs_per_trial)
-
-            # 4b) Salvar melhores hiperparâmetros
-            logger.info("💾 Salvando melhores hiperparâmetros...")
-            tuner.save_best_hyperparameters(model_name=model_config.model_name)
-
-            # 4c) Retreinar com melhores hiperparâmetros
-            logger.info("📈 Fase 2/3: Retreinando modelo final...")
-            best_model, history = tuner.retrain_best_model(epochs=final_epochs)
-        else:
-            # Modo retrain-only: carregar HPs e retreinar direto
-            logger.info("🔁 Modo 'retrain': usando hiperparâmetros salvos")
-            if not best_hp_path.exists():
-                raise FileNotFoundError(
-                    f"Arquivo de hiperparâmetros não encontrado: {best_hp_path}"
+            # Construir path dos HPs se não fornecido
+            if best_hp_path is None:
+                best_hp_path = Path(
+                    f"artifacts/tuning/best_hyperparameters_{model_config.model_name}.json"
                 )
+                logger.info(f"📝 Path de HPs (auto): {best_hp_path}")
 
-            with open(best_hp_path) as f:
-                best_hp = json.load(f)
-
-            logger.info("\n📋 Hiperparâmetros carregados:")
-            logger.info(f"   Learning Rate:       {best_hp.get('learning_rate')}")
-            logger.info(f"   Dropout Rate:        {best_hp.get('dropout_rate')}")
-            logger.info(
-                f"   Unfreeze Layers:     {best_hp.get('unfreeze_last_n_layers')}"
+            image_config = ImageConfig(
+                altura=model_config.image_size[0],
+                largura=model_config.image_size[1],
+                canais=model_config.image_size[2],
+                data_dir=Path(DATA_SOURCE_DIR),
             )
-            if "l2_regularization" in best_hp:
+
+            # ===== STAGE 1: DATA INGESTION =====
+            logger.info("\n🔄 === Stage 1: Data Ingestion ===")
+            data_ingestion = DataIngestionPipeline()
+            stage1_result = data_ingestion.main()
+
+            if isinstance(stage1_result, Path):
+                logger.info(f"✅ Stage 1 completo: {stage1_result}")
+            else:
+                logger.info(f"✅ Stage 1 completo: {stage1_result}")
+
+            # ===== STAGE 2: DATA SPLITTING =====
+            logger.info("\n🔄 === Stage 2: Data Splitting ===")
+            data_splitting = DataSplittingPipeline(
+                config=model_config, image_config=image_config
+            )
+            stage2_result = data_splitting.main()
+
+            if stage2_result["success"]:
+                logger.info("✅ Stage 2 completo!")
+            else:
+                logger.error(f"❌ Stage 2 falhou: {stage2_result['error']}")
+                return stage2_result
+
+            # ===== STAGE 3: SKIP PrepareModel =====
+            # Keras Tuner cria modelos internamente com hiperparâmetros variados
+            logger.info("=== Stage 3: PULADO (tuner cria modelos internamente) ===")
+
+            # ===== STAGE 4: KERAS TUNER (Search + Retrain) =====
+            logger.info("=== Stage 4: Keras Tuner - Busca e Retreino ===")
+
+            # Preparar data splitter para o tuner
+            data_splitter_config = DataSplitterConfig(
+                batch_size=model_config.batch_size or 32,
+                random_seed=model_config.random_seed,
+                train_ratio=model_config.train_ratio,
+                val_ratio=model_config.val_ratio,
+                test_ratio=model_config.test_ratio,
+            )
+
+            data_splitter = DataSplitter(
+                data_split_config=data_splitter_config,
+                image_config=image_config,
+                subset=DataSubsetType,
+            )
+
+            class_distribution = data_splitter.get_class_distribution()
+            mlflow.log_dict(
+                class_distribution, "data_split_class_distribution.json"
+            )
+
+            # Inicializar tuner
+            logger.info("🔧 Inicializando Keras Tuner...")
+            tuner = KerasTunerSearch(model_config, data_splitter)
+
+            if mode == "tune":
+                # 4a) Busca de hiperparâmetros
+                logger.info("🔍 Fase 1/3: Busca de hiperparâmetros...")
+                tuner.search(max_trials=max_trials, epochs_per_trial=epochs_per_trial)
+
+                # 4b) Salvar melhores hiperparâmetros
+                logger.info("💾 Salvando melhores hiperparâmetros...")
+                tuner.save_best_hyperparameters(model_name=model_config.model_name)
+
+                # 4c) Retreinar com melhores hiperparâmetros
+                logger.info("📈 Fase 2/3: Retreinando modelo final...")
+                best_model, history = tuner.retrain_best_model(epochs=final_epochs)
+            else:
+                # Modo retrain-only: carregar HPs e retreinar direto
+                logger.info("🔁 Modo 'retrain': usando hiperparâmetros salvos")
+                if not best_hp_path.exists():
+                    raise FileNotFoundError(
+                        f"Arquivo de hiperparâmetros não encontrado: {best_hp_path}"
+                    )
+
+                with open(best_hp_path) as f:
+                    best_hp = json.load(f)
+
+                logger.info("\n📋 Hiperparâmetros carregados:")
+                logger.info(f"   Learning Rate:       {best_hp.get('learning_rate')}")
+                logger.info(f"   Dropout Rate:        {best_hp.get('dropout_rate')}")
                 logger.info(
-                    f"   L2 Regularization:   {best_hp.get('l2_regularization')}"
+                    f"   Unfreeze Layers:     {best_hp.get('unfreeze_last_n_layers')}"
+                )
+                if "l2_regularization" in best_hp:
+                    logger.info(
+                        f"   L2 Regularization:   {best_hp.get('l2_regularization')}"
+                    )
+
+                hp = kt.HyperParameters()
+                hp.values = best_hp
+                tuner.best_hp = hp
+
+                logger.info("📈 Fase 2/3: Retreinando modelo final (retrain-only)...")
+                best_model, history = tuner.retrain_best_model(epochs=final_epochs)
+
+            logger.info("✅ Stage 4 completo!")
+
+            stage4_result = {
+                "success": True,
+                "model": best_model,
+                "history": history,
+                "tuner": tuner,
+            }
+
+            if tuner.best_hp:
+                mlflow.log_param("best_lr", tuner.best_hp.get("learning_rate"))
+                mlflow.log_param("best_dropout", tuner.best_hp.get("dropout_rate"))
+                mlflow.log_param(
+                    "best_unfreeze", tuner.best_hp.get("unfreeze_last_n_layers")
+                )
+                mlflow.log_param("best_l2", tuner.best_hp.get("l2_regularization"))
+
+            # ===== STAGE 5: Model Evaluation =====
+            logger.info("\n🔄 === Stage 5: Model Evaluation (Detalhada) ===")
+            try:
+                eval_pipeline = ModelEvaluationPipeline(
+                    model_config=model_config,
+                    image_config=image_config,
+                    data=stage2_result,
                 )
 
-            hp = kt.HyperParameters()
-            hp.values = best_hp
-            tuner.best_hp = hp
+                stage5_result = eval_pipeline.main(
+                    validation_data=stage2_result["validation_data"],
+                    model=best_model,
+                    history=history,
+                )
 
-            logger.info("📈 Fase 2/3: Retreinando modelo final (retrain-only)...")
-            best_model, history = tuner.retrain_best_model(epochs=final_epochs)
+                if stage5_result["success"]:
+                    logger.info("✅ Stage 5 completo!")
+                    logger.info(
+                        f"📊 Acurácia: {stage5_result['metrics'].get('accuracy', 0):.4f}"
+                    )
+                    logger.info(
+                        f"🎯 F1-Score: {stage5_result['metrics'].get('f1_macro', 0):.4f}"
+                    )
+                    if (
+                        "evaluation_result" in stage5_result
+                        and "report_path" in stage5_result["evaluation_result"]
+                    ):
+                        stage5_result["report_path"] = stage5_result[
+                            "evaluation_result"
+                        ]["report_path"]
+                else:
+                    logger.warning(f"❌ Stage 5 falhou: {stage5_result['error']}")
 
-        logger.info("✅ Stage 4 completo!")
+            except Exception as e:
+                logger.warning(f"❌ Stage 5 não executado: {e}")
+                stage5_result = {"success": False, "error": str(e)}
 
-        stage4_result = {
-            "success": True,
-            "model": best_model,
-            "history": history,
-            "tuner": tuner,
-        }
+            # ===== STAGE 6: Teste Final  =====
+            logger.info("\n🔄 === Stage 6: Teste Final ===")
+            try:
+                test_data = stage2_result["test_data"]
+                test_result = eval_pipeline.main(
+                    validation_data=test_data,  # ← Usa teste em vez de validação
+                    model=best_model,
+                    history=history,
+                )
+                logger.info(
+                    f"🧪 Teste Final - Acurácia: {test_result['metrics']['accuracy']:.4f}"
+                    f"🧪 Teste Final - F1 score: {test_result['metrics']['f1_macro']:.4f}"
+                )
 
-        # ===== STAGE 5: Model Evaluation =====
-        logger.info("\n🔄 === Stage 5: Model Evaluation (Detalhada) ===")
-        try:
-            eval_pipeline = ModelEvaluationPipeline(
-                model_config=model_config, image_config=image_config, data=stage2_result
+                if test_result["success"]:
+                    mlflow.log_metric(
+                        "test_accuracy", test_result["metrics"].get("accuracy", 0)
+                    )
+                    mlflow.log_metric(
+                        "test_f1_macro", test_result["metrics"].get("f1_macro", 0)
+                    )
+            except Exception as e:
+                logger.warning(f"❌ Stage 6 não executado: {e}")
+                stage5_result = {"success": False, "error": str(e)}
+
+            # ===== RESUMO FINAL =====
+            logger.info("\n" + "=" * 80)
+            logger.info("✨ PIPELINE DE TUNING COMPLETO COM SUCESSO!")
+            logger.info("=" * 80)
+            logger.info(
+                "📁 Modelo salvo: artifacts/models/mobilenetv3_keras_tuner_best.keras"
             )
-
-            stage5_result = eval_pipeline.main(
-                validation_data=stage2_result["validation_data"],
-                model=best_model,
-                history=history,
-            )
+            logger.info(f"📊 Relatório: {stage5_result.get('report_path', 'N/A')}")
+            logger.info("=" * 80)
 
             if stage5_result["success"]:
-                logger.info("✅ Stage 5 completo!")
-                logger.info(
-                    f"📊 Acurácia: {stage5_result['metrics'].get('accuracy', 0):.4f}"
+                mlflow.log_metric(
+                    "val_accuracy", stage5_result["metrics"].get("accuracy", 0)
                 )
-                logger.info(
-                    f"🎯 F1-Score: {stage5_result['metrics'].get('f1_macro', 0):.4f}"
+                mlflow.log_metric(
+                    "val_f1_macro", stage5_result["metrics"].get("f1_macro", 0)
                 )
-                if (
-                    "evaluation_result" in stage5_result
-                    and "report_path" in stage5_result["evaluation_result"]
-                ):
-                    stage5_result["report_path"] = stage5_result["evaluation_result"][
-                        "report_path"
-                    ]
-            else:
-                logger.warning(f"❌ Stage 5 falhou: {stage5_result['error']}")
 
-        except Exception as e:
-            logger.warning(f"❌ Stage 5 não executado: {e}")
-            stage5_result = {"success": False, "error": str(e)}
+            evaluation_dir = stage5_result.get("evaluation_dir")
+            if evaluation_dir and Path(evaluation_dir).exists():
+                mlflow.log_artifacts(evaluation_dir, artifact_path="evaluation")
 
-        # ===== RESUMO FINAL =====
-        logger.info("\n" + "=" * 80)
-        logger.info("✨ PIPELINE DE TUNING COMPLETO COM SUCESSO!")
-        logger.info("=" * 80)
-        logger.info(
-            "📁 Modelo salvo: artifacts/models/mobilenetv3_keras_tuner_best.keras"
-        )
-        logger.info(f"📊 Relatório: {stage5_result.get('report_path', 'N/A')}")
-        logger.info("=" * 80)
+            keras_path = (
+                Path("artifacts")
+                / "models"
+                / "mobile"
+                / f"{model_config.model_name}_keras_tuner_best.keras"
+            )
+            if keras_path.exists():
+                mlflow.log_artifact(keras_path, artifact_path="models")
 
-        return {
-            "config": model_config,
-            "stage1": stage1_result,
-            "stage2": stage2_result,
-            "stage3": {"skipped": True},
-            "stage4": stage4_result,
-            "stage5": stage5_result,
-            "success": True,
-        }
+            h5_path = (
+                Path("artifacts")
+                / "models"
+                / "mobile"
+                / f"{model_config.model_name}_keras_tuner_best.h5"
+            )
+            if h5_path.exists():
+                mlflow.log_artifact(h5_path, artifact_path="models")
+
+            tflite_path = (
+                Path("artifacts")
+                / "models"
+                / "mobile"
+                / f"{model_config.model_name}_keras_tuner_best.tflite"
+            )
+            if tflite_path.exists():
+                mlflow.log_artifact(tflite_path, artifact_path="models")
+
+            mlflow.keras.log_model(
+                best_model,
+                "model",
+                registered_model_name=f"{model_config.model_name}_classifier",
+            )
+
+            return {
+                "config": model_config,
+                "stage1": stage1_result,
+                "stage2": stage2_result,
+                "stage3": {"skipped": True},
+                "stage4": stage4_result,
+                "stage5": stage5_result,
+                "stage6": test_result,
+                "success": True,
+            }
 
     except Exception as e:
         logger.exception(f"💥 Pipeline de tuning falhou: {e}")
