@@ -39,6 +39,7 @@ class DataSplitterConfig(BaseModel):
     random_seed: int = Field(..., description="Semente para embaralhamento aleatório")
     train_ratio: float = Field(..., description="Proporção dos dados para treino")
     val_ratio: float = Field(..., description="Proporção dos dados para validação")
+    test_ratio: float = Field(..., description="Proporção dos dados para teste")
 
 
 class ModelConfig(BaseModel):
@@ -83,6 +84,7 @@ class ModelConfig(BaseModel):
     num_classes: int
     train_ratio: float
     val_ratio: float
+    test_ratio: float
 
     # Data augmentation
     augmentation_enabled: bool = Field(True, description="Ativar data augmentation")
@@ -105,8 +107,8 @@ class ModelConfig(BaseModel):
         default=None, description="Desvio padrão do ruído gaussiano"
     )
     class_specific_augmentation: Optional[Dict[str, dict]] = Field(
-        default=None, 
-        description="Augmentation específico por classe. Ex: {'Healthy': {'rotation_range': 45}}"
+        default=None,
+        description="Augmentation específico por classe. Ex: {'Healthy': {'rotation_range': 45}}",
     )
 
     # Fine-tuning
@@ -172,6 +174,7 @@ class ModelConfig(BaseModel):
                 num_classes=config["dataset"]["classes"],
                 train_ratio=config["dataset"]["train_ratio"],
                 val_ratio=config["dataset"]["val_ratio"],
+                test_ratio=config["dataset"]["test_ratio"],
                 # Augmentation
                 augmentation_enabled=config["augmentation"]["enabled"],
                 horizontal_flip=config["augmentation"]["horizontal_flip"],
@@ -182,7 +185,9 @@ class ModelConfig(BaseModel):
                 rotation_range=config["augmentation"].get("rotation_range"),
                 contrast_range=config["augmentation"].get("contrast_range"),
                 gaussian_noise=config["augmentation"].get("gaussian_noise"),
-                class_specific_augmentation=config["augmentation"].get("class_specific"),
+                class_specific_augmentation=config["augmentation"].get(
+                    "class_specific"
+                ),
                 unfreeze_last_n_layers=config["tuning"]
                 .get("unfreeze_last_n_layers", {})
                 .get("min", 20),

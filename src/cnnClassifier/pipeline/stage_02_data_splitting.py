@@ -30,6 +30,7 @@ class DataSplittingPipeline:
             - success (bool): Indica se a divisão foi bem-sucedida
             - train_data (list): Dados de treino
             - validation_data (list): Dados de validação
+            - test_data (list): Dados de teste
 
         """
 
@@ -42,6 +43,7 @@ class DataSplittingPipeline:
                 random_seed=self.config.random_seed,
                 train_ratio=self.config.train_ratio,
                 val_ratio=self.config.val_ratio,
+                test_ratio=self.config.test_ratio,
             )
 
             data_splitter = DataSplitter(
@@ -52,6 +54,7 @@ class DataSplittingPipeline:
 
             train_data = data_splitter.load_train_data()
             validation_data = data_splitter.load_validation_data()
+            test_data = data_splitter.load_test_data()
 
             logger.info("Dados de treino e validação carregados com sucesso.")
 
@@ -59,6 +62,7 @@ class DataSplittingPipeline:
                 "success": True,
                 "train_data": train_data,
                 "validation_data": validation_data,
+                "test_data": test_data,
             }
         except Exception as e:
             logger.error(f"❌ Erro no pipeline de divisão: {e}")

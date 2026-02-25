@@ -100,7 +100,7 @@ class PrepareModel:
 
         # Normalização condicional baseada no modelo
         model_name = self.model_config.model_name.lower()
-        
+
         # Modelos que esperam entrada [0, 1]: VGG, EfficientNet
         if "vgg" in model_name or "efficientnet" in model_name:
             x = tf.keras.layers.Rescaling(1.0 / 255)(x)
@@ -108,7 +108,7 @@ class PrepareModel:
                 f"✅ Normalização [0,1]: Rescaling(1/255) para {self.model_config.model_name}"
             )
         # Modelos que esperam entrada [-1, 1]: MobileNet, Inception, NASNet
-        elif any(keyword in model_name for keyword in ["mobilenet", "inception", "nasnet"]):
+        elif any(keyword in model_name for keyword in ["inception", "nasnet"]):
             x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(x)
             logger.info(
                 f"✅ Normalização [-1,1]: Rescaling(2/255, -1) para {self.model_config.model_name}"
@@ -217,6 +217,7 @@ class PrepareModel:
         Returns:
             tf.keras.Sequential: Pipeline de augmentação
         """
+        seed = self.model_config.random_seed
         layers = []
 
         # Respeita flag de habilitação
@@ -244,17 +245,19 @@ class PrepareModel:
             hasattr(self.model_config, "horizontal_flip")
             and self.model_config.horizontal_flip
         ):
-            layers.append(tf.keras.layers.RandomFlip("horizontal"))
+            layers.append(tf.keras.layers.RandomFlip("horizontal", seed=seed))
             logger.info("Data Augmentation: RandomFlip horizontal adicionado")
 
         if hasattr(self.model_config, "zoom_factor"):
-            layers.append(tf.keras.layers.RandomZoom(self.model_config.zoom_factor))
+            layers.append(
+                tf.keras.layers.RandomZoom(self.model_config.zoom_factor, seed=seed)
+            )
             logger.info("Data Augmentation: RandomZoom adicionado")
 
         # NOTE: brightness_range está piorando os resultados para este dataset (soybean leaf pest damage)
         # if hasattr(self.model_config, "brightness_range"):
         #     brightness = self.model_config.brightness_range
-        #     layers.append(tf.keras.layers.RandomBrightness(factor=brightness))
+        #     layers.append(tf.keras.layers.RandomBrightness(factor=brightness,seed=seed))
         #     logger.info("Data Augmentation: RandomBrightness adicionado")
 
         if (
@@ -266,7 +269,7 @@ class PrepareModel:
         else:
             contrast_range = [0.1, 1.1]
             logger.info("Data Augmentation: RandomContrast default adicionado")
-        layers.append(tf.keras.layers.RandomContrast(factor=contrast_range))
+        layers.append(tf.keras.layers.RandomContrast(factor=contrast_range, seed=seed))
 
         rotation = None
         if (
@@ -281,7 +284,7 @@ class PrepareModel:
             rotation = self.model_config.rotation_factor
 
         if rotation is not None:
-            layers.append(tf.keras.layers.RandomRotation(rotation))
+            layers.append(tf.keras.layers.RandomRotation(rotation, seed=seed))
             logger.info("Data Augmentation: RandomRotation adicionado")
 
         data_augmentation = tf.keras.Sequential(layers)

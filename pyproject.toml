@@ -31,6 +31,10 @@ dependencies = [
     "tensorflow-model-optimization>=0.8.0",
     "tf-keras>=2.17.0",
     "streamlit>=1.53.1",
+    "mlflow>=3.1",
+    "psutil>=7.2.2",
+    "nvidia-ml-py>=13.590.48",
+    "pyrsmi>=1.1.0",
 ]
 
 [project.optional-dependencies]
