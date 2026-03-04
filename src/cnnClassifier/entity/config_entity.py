@@ -62,6 +62,9 @@ class ModelConfig(BaseModel):
     metrics: List[str] = Field(..., description="Métricas de avaliação")
     class_weights: Optional[Dict[int, float]] = None
     use_pretrained: bool = Field(default=True, description="Usar modelo pré-treinado")
+    l2_regularization: float = Field(
+        default=0.01, description="L2 regularization para camadas Dense"
+    )
 
     # Model head options
     use_compression_blocks: bool = Field(
@@ -116,6 +119,63 @@ class ModelConfig(BaseModel):
         default=20, description="Número de camadas finais a descongelar"
     )
 
+    def get_tuning_search_space(self):
+        """
+        Retorna os ranges de tuning para o modelo atual a partir do YAML.
+
+        Returns:
+            Dict com os ranges (learning_rate, dropout_rate, etc)
+        """
+        config_path = Path("model_params.yaml")
+
+        if not config_path.exists():
+            logger.warning(f"YAML não encontrado: {config_path}. Usando ranges padrão.")
+            return {}
+
+        with open(config_path, "r", encoding="utf-8") as f:
+            config = yaml.safe_load(f)
+
+        # Buscar tuning.search_space[model_name]
+        tuning_config = config.get("tuning", {})
+        search_space = tuning_config.get("search_space", {})
+
+        # Normalizar nome do modelo para lowercase
+        model_key = self.model_name.lower().replace(" ", "")
+
+        # Tentar encontrar exatamente ou por padrão
+        result = None
+        if model_key in search_space:
+            result = search_space[model_key]
+        else:
+            # Fallback: procurar chaves similares
+            for key in search_space:
+                if key in model_key or model_key in key:
+                    logger.info(f"📍 Usando search_space para: {key}")
+                    result = search_space[key]
+                    break
+
+        if result is None:
+            logger.warning(f"⚠️ Nenhum search_space encontrado para {self.model_name}")
+            return {}
+
+        # Converter valores de string para números (YAML lê como string)
+        converted = {}
+        for param_name, param_config in result.items():
+            converted[param_name] = {}
+            for key, value in param_config.items():
+                # Converter valores numéricos de string
+                if isinstance(value, str):
+                    try:
+                        # Tentar converter para float (ex: "1e-4" -> 0.0001)
+                        converted[param_name][key] = float(value)
+                    except (ValueError, TypeError):
+                        # Se falhar, manter como string (ex: "log")
+                        converted[param_name][key] = value
+                else:
+                    converted[param_name][key] = value
+
+        return converted
+
     @classmethod
     def from_yaml(cls, config_path: str, experiment: Optional[str] = None):
         """Carrega configuração do arquivo YAML."""
@@ -125,8 +185,16 @@ class ModelConfig(BaseModel):
             config = yaml.safe_load(f)
 
         # Se especificar experimento, merge
-        if experiment and experiment in config.get("experiments", {}):
-            exp_config = config["experiments"][experiment]
+        if experiment:
+            available_experiments = config.get("experiments", {})
+            if experiment not in available_experiments:
+                available_list = ", ".join(sorted(available_experiments.keys()))
+                raise ValueError(
+                    f"❌ Experimento '{experiment}' não encontrado no YAML!\n"
+                    f"   Experimentos disponíveis: {available_list}"
+                )
+            
+            exp_config = available_experiments[experiment]
             for section, values in exp_config.items():
                 if section in config:
                     config[section].update(values)

@@ -25,6 +25,17 @@ from cnnClassifier.tuning.keras_tuner import KerasTunerSearch
 
 import mlflow
 
+from loguru import logger
+from dotenv import load_dotenv
+
+import dagshub
+
+load_dotenv()
+
+mlflow_uri = os.environ["MLFLOW_TRACKING_URI"]
+mlflow_user = os.environ["MLFLOW_TRACKING_USERNAME"]
+mlflow_pass = os.environ["MLFLOW_TRACKING_PASSWORD"]
+
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
@@ -52,9 +63,11 @@ def main(
         help="Caminho para o JSON com os melhores hiperparâmetros (auto: artifacts/tuning/best_hyperparameters_<model>.json)",
     ),
     max_trials: int = typer.Option(30, help="Número máximo de trials na busca"),
-    epochs_per_trial: int = typer.Option(30, help="Épocas por trial na busca"),
+    epochs_per_trial: int = typer.Option(50, help="Épocas por trial na busca"),
     final_epochs: int = typer.Option(100, help="Épocas no retreino final"),
-    # use_mlflow: bool = typer.Option(False, help="Ativar logging no MLflow"),
+    log_trials: bool = typer.Option(
+        True, help="Logar cada trial no MLflow (recomendado)"
+    ),
 ):
     logger.info("=" * 80)
     logger.info("🚀 PIPELINE DE TUNING - Keras Tuner com Bayesian Optimization")
@@ -77,8 +90,15 @@ def main(
 
         # if use_mlflow:
 
-        mlflow.set_tracking_uri("file:./mlruns")
         mlflow.set_experiment(f"tuning-{experiment}")
+
+        dagshub.init(
+            repo_owner="nanshibukawa", repo_name="soybean-leaf-pest-damage", mlflow=True
+        )
+        # mlflow.set_tracking_uri("file:./mlruns")
+        mlflow.set_tracking_uri(
+            "https://dagshub.com/nanshibukawa/soybean-leaf-pest-damage.mlflow"
+        )
 
         # 📊 Configurar coleta de system metrics
         mlflow.set_system_metrics_sampling_interval(10)  # Coletar a cada 10 segundos
@@ -86,12 +106,51 @@ def main(
 
         with mlflow.start_run(
             run_name=f"{model_config.model_name}-{mode}", log_system_metrics=True
-        ):
+        ) as parent_run:
+            logger.info(f"🔗 MLflow parent run: {parent_run.info.run_id}")
+            logger.info(
+                f"📊 Trial logging: {'ATIVADO' if log_trials else 'DESATIVADO'}"
+            )
+
+            mlflow.log_param("random_seed", seed)
             mlflow.log_param("model_name", model_config.model_name)
             mlflow.log_param("image_size", str(model_config.image_size))
             mlflow.log_param("batch_size", model_config.batch_size)
             mlflow.log_param("max_trials", max_trials)
             mlflow.log_param("epochs_per_trial", epochs_per_trial)
+            mlflow.log_param("log_trials_to_mlflow", log_trials)
+            logger.info(f"🎯 Batch Size da Config: {model_config.batch_size}")
+
+            # Logar class_weights se existir
+            class_weights = getattr(model_config, "class_weights", None)
+            if class_weights:
+                class_names = ["caterpillar", "diabrotica_speciosa", "healthy"]
+                for class_id, weight in class_weights.items():
+                    class_name = (
+                        class_names[class_id]
+                        if class_id < len(class_names)
+                        else f"class_{class_id}"
+                    )
+                    mlflow.log_param(f"class_weight_{class_name}", weight)
+            else:
+                mlflow.log_param("class_weight", "None")
+
+            # Logar augmentation params
+            mlflow.log_param("augmentation_enabled", model_config.augmentation_enabled)
+            if model_config.augmentation_enabled:
+                mlflow.log_param("aug_rotation_range", model_config.rotation_range)
+                mlflow.log_param(
+                    "aug_brightness_range", str(model_config.brightness_range)
+                )
+                mlflow.log_param("aug_zoom_range", str(model_config.zoom_range))
+                if hasattr(model_config, "contrast_range"):
+                    mlflow.log_param(
+                        "aug_contrast_range", str(model_config.contrast_range)
+                    )
+                if hasattr(model_config, "horizontal_flip"):
+                    mlflow.log_param(
+                        "aug_horizontal_flip", model_config.horizontal_flip
+                    )
 
             # Construir path dos HPs se não fornecido
             if best_hp_path is None:
@@ -153,9 +212,7 @@ def main(
             )
 
             class_distribution = data_splitter.get_class_distribution()
-            mlflow.log_dict(
-                class_distribution, "data_split_class_distribution.json"
-            )
+            mlflow.log_dict(class_distribution, "data_split_class_distribution.json")
 
             # Inicializar tuner
             logger.info("🔧 Inicializando Keras Tuner...")
@@ -164,11 +221,17 @@ def main(
             if mode == "tune":
                 # 4a) Busca de hiperparâmetros
                 logger.info("🔍 Fase 1/3: Busca de hiperparâmetros...")
-                tuner.search(max_trials=max_trials, epochs_per_trial=epochs_per_trial)
+                tuner.search(
+                    max_trials=max_trials,
+                    epochs_per_trial=epochs_per_trial,
+                    log_trials_to_mlflow=log_trials,
+                )
 
                 # 4b) Salvar melhores hiperparâmetros
                 logger.info("💾 Salvando melhores hiperparâmetros...")
                 tuner.save_best_hyperparameters(model_name=model_config.model_name)
+                if best_hp_path.exists():
+                    mlflow.log_artifact(best_hp_path, artifact_path="tuning")
 
                 # 4c) Retreinar com melhores hiperparâmetros
                 logger.info("📈 Fase 2/3: Retreinando modelo final...")
@@ -277,6 +340,28 @@ def main(
                     mlflow.log_metric(
                         "test_f1_macro", test_result["metrics"].get("f1_macro", 0)
                     )
+
+                    # Logar métricas por classe (teste)
+                    class_report = test_result["metrics"].get(
+                        "classification_report", {}
+                    )
+                    class_names = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+                    for cls in class_names:
+                        if cls in class_report:
+                            cls_safe = cls.replace(" ", "_").lower()
+                            mlflow.log_metric(
+                                f"test_precision_{cls_safe}",
+                                class_report[cls]["precision"],
+                            )
+                            mlflow.log_metric(
+                                f"test_recall_{cls_safe}", class_report[cls]["recall"]
+                            )
+                            mlflow.log_metric(
+                                f"test_f1_{cls_safe}", class_report[cls]["f1-score"]
+                            )
+                            mlflow.log_metric(
+                                f"test_support_{cls_safe}", class_report[cls]["support"]
+                            )
             except Exception as e:
                 logger.warning(f"❌ Stage 6 não executado: {e}")
                 stage5_result = {"success": False, "error": str(e)}
@@ -298,6 +383,25 @@ def main(
                 mlflow.log_metric(
                     "val_f1_macro", stage5_result["metrics"].get("f1_macro", 0)
                 )
+
+                # Logar métricas por classe (validação)
+                class_report = stage5_result["metrics"].get("classification_report", {})
+                class_names = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+                for cls in class_names:
+                    if cls in class_report:
+                        cls_safe = cls.replace(" ", "_").lower()
+                        mlflow.log_metric(
+                            f"val_precision_{cls_safe}", class_report[cls]["precision"]
+                        )
+                        mlflow.log_metric(
+                            f"val_recall_{cls_safe}", class_report[cls]["recall"]
+                        )
+                        mlflow.log_metric(
+                            f"val_f1_{cls_safe}", class_report[cls]["f1-score"]
+                        )
+                        mlflow.log_metric(
+                            f"val_support_{cls_safe}", class_report[cls]["support"]
+                        )
 
             evaluation_dir = stage5_result.get("evaluation_dir")
             if evaluation_dir and Path(evaluation_dir).exists():
