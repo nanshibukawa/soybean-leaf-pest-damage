@@ -74,8 +74,35 @@ python scripts/main_tuning.py --experiment vgg19
 # EfficientNet B0 (balanço performance/eficiência)
 python scripts/main_tuning.py --experiment efficientnetb0
 
+# EfficientNet B1 (240x240, balanceado)
+python scripts/main_tuning.py --experiment efficientnetb1
+
+# EfficientNet B2 (260x260, melhor precisão)
+python scripts/main_tuning.py --experiment efficientnetb2
+
+# EfficientNet B3 (300x300, alta precisão)
+python scripts/main_tuning.py --experiment efficientnetb3
+
 # EfficientNet B7 (máxima precisão, mais pesado)
 python scripts/main_tuning.py --experiment efficientnetb7
+
+# EfficientNetV2 B0 (versão V2, rápida e eficiente)
+python scripts/main_tuning.py --experiment efficientnetv2b0
+
+# EfficientNetV2 B1 (versão V2 com maior capacidade)
+python scripts/main_tuning.py --experiment efficientnetv2b1
+
+# EfficientNetV2 B2 (versão V2 com maior capacidade)
+python scripts/main_tuning.py --experiment efficientnetv2b2
+
+# EfficientNetV2 B3 (versão V2 com maior capacidade)
+python scripts/main_tuning.py --experiment efficientnetv2b3
+
+# ConvNeXtTiny
+python scripts/main_tuning.py --experiment convnexttiny
+
+# ConvNeXtSmall 
+python scripts/main_tuning.py --experiment convneXtsmall
 
 # NASNet Mobile (AutoML, mobile-friendly)
 python scripts/main_tuning.py --experiment nasnetmobile

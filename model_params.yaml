@@ -19,10 +19,14 @@ image:
 
 training:
   batch_size: 32
-  epochs: 100
+  epochs: 10
   dropout_rate: 0.4
   loss: "sparse_categorical_crossentropy"
   metrics: ["accuracy"]
+  class_weights:
+    0: 0.7
+    1: 1.0
+    2: 3.5
 
 optimizer:
   name: "adam" 
@@ -67,18 +71,357 @@ dataset:
   test_ratio: 0.1
 
 tuning:
-  max_trials: 30
-  epochs_per_trial: 5
-  final_epochs: 100
-  learning_rate:
-    min: 1e-5
-    max: 5e-4
-  dropout_rate:
-    min: 0.2
-    max: 0.6
-  unfreeze_last_n_layers:
-    min: 8
-    max: 40
+
+  max_trials: 10
+  epochs_per_trial: 50
+  final_epochs: 200
+  search_space:
+    mobilenetv3large:
+      learning_rate:
+        min_value: 1e-4
+        max_value: 4e-4
+        sampling: "log"
+        default: 2e-4
+      dropout_rate:
+        min_value: 0.0
+        max_value: 0.3
+        step: 0.05
+        default: 0.2
+      l2_regularization:
+        min_value: 1e-7
+        max_value: 1e-4
+        sampling: "log"
+        default: 1e-5
+      unfreeze_last_n_layers:
+        min_value: 0
+        max_value: 40
+        step: 4
+        default: 32
+
+    mobilenetv3small:
+      learning_rate:
+        min_value: 1e-4
+        max_value: 4e-4
+        sampling: "log"
+        default: 2e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.5
+        step: 0.05
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-3
+        max_value: 1e-2
+        sampling: "log"
+        default: 5e-3
+      unfreeze_last_n_layers:
+        min_value: 20
+        max_value: 90
+        step: 4
+        default: 28
+
+    nasnetmobile:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.45
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 64
+        step: 4
+        default: 32
+
+    efficientnetb0:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.45
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 64
+        step: 4
+        default: 32
+
+    efficientnetb1:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.45
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 64
+        step: 4
+        default: 32
+
+
+    efficientnetb2:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.45
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 64
+        step: 4
+        default: 32
+
+    efficientnetb3:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.45
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 64
+        step: 4
+        default: 32
+
+    efficientnetv2b0:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-3
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    efficientnetv2b1:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-3
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    efficientnetv2b2:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-3
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    efficientnetv2b3:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-3
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    convnexttiny:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    convnextsmall:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.2
+        max_value: 0.6
+        step: 0.1
+        default: 0.4
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 5e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 16
+        max_value: 128
+        step: 8
+        default: 64
+
+    vgg19:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-4
+        sampling: "log"
+        default: 5e-5
+      dropout_rate:
+        min_value: 0.3
+        max_value: 0.6
+        step: 0.1
+        default: 0.5
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 8
+        max_value: 32
+        step: 4
+        default: 16
+
+    inceptionv3:
+      learning_rate:
+        min_value: 1e-4
+        max_value: 5e-4
+        sampling: "log"
+        default: 1e-4
+      dropout_rate:
+        min_value: 0.1
+        max_value: 0.4
+        step: 0.05
+        default: 0.3
+      l2_regularization:
+        min_value: 1e-4
+        max_value: 1e-2
+        sampling: "log"
+        default: 1e-3
+      unfreeze_last_n_layers:
+        min_value: 56
+        max_value: 96
+        step: 4
+        default: 64
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # =============================================================================
 # EXPERIMENTOS POR MODELO
@@ -143,7 +486,7 @@ experiments:
     image:
       size: [299, 299, 3]  # InceptionV3 usa 299x299
     training:
-      batch_size: 16  # Reduzido devido ao tamanho da imagem
+      batch_size: 8  # Reduzido devido ao tamanho da imagem
       epochs: 100
       dropout_rate: 0.5
       class_weights:
@@ -166,7 +509,7 @@ experiments:
     image:
       size: [224, 224, 3]
     training:
-      batch_size: 16  # Modelo pesado
+      batch_size: 32  # Modelo pesado
       epochs: 100
       dropout_rate: 0.5
       class_weights:
@@ -175,6 +518,52 @@ experiments:
         2: 2.5
     optimizer:
       learning_rate: 0.00005
+
+  # ---------------------------------------------------------------------------
+  # ConvNeXtTiny - Backbone moderno (baseline tradicional)
+  # ---------------------------------------------------------------------------
+  convnexttiny:
+    model:
+      name: "ConvNeXtTiny"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 8
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # ConvNeXtSmall - Backbone moderno com maior capacidade
+  # ---------------------------------------------------------------------------
+  convnextsmall:
+    model:
+      name: "ConvNeXtSmall"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 16
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
 
   # ---------------------------------------------------------------------------
   # EfficientNetB0 - Balanceado: precisão vs eficiência
@@ -200,6 +589,167 @@ experiments:
       learning_rate: 0.0001
 
   # ---------------------------------------------------------------------------
+  # EfficientNetB1 - Balanceado: precisão vs eficiência
+  # ---------------------------------------------------------------------------
+  efficientnetb1:
+    model:
+      name: "EfficientNetB1"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [240, 240, 3]
+    training:
+      batch_size: 32
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B0 - Versão V2 mais rápida e eficiente
+  # ---------------------------------------------------------------------------
+  efficientnetv2b0:
+    model:
+      name: "EfficientNetV2B0"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 32
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B1 - Versão V2 com melhor capacidade
+  # ---------------------------------------------------------------------------
+  efficientnetv2b1:
+    model:
+      name: "EfficientNetV2B1"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [240, 240, 3]
+    training:
+      batch_size: 32
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B2 - Melhor precisão
+  # ---------------------------------------------------------------------------
+  efficientnetv2b2:
+    model:
+      name: "EfficientNetV2B2"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [260, 260, 3]
+    training:
+      batch_size: 32
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B3 - Alta precisão
+  # ---------------------------------------------------------------------------
+  efficientnetv2b3:
+    model:
+      name: "EfficientNetV2B3"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [300, 300, 3]
+    training:
+      batch_size: 16  # Reduzido devido ao tamanho
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetB2 - Melhor precisão
+  # ---------------------------------------------------------------------------
+  efficientnetb2:
+    model:
+      name: "EfficientNetB2"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [260, 260, 3]
+    training:
+      batch_size: 32
+      epochs: 120
+      dropout_rate: 0.4
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetB3 - Alta precisão
+  # ---------------------------------------------------------------------------
+  efficientnetb3:
+    model:
+      name: "EfficientNetB3"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [300, 300, 3]
+    training:
+      batch_size: 16  # Reduzido devido ao tamanho
+      epochs: 120
+      dropout_rate: 0.45
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.0001
+
+  # ---------------------------------------------------------------------------
   # EfficientNetB7 - Máxima precisão, mais pesado
   # ---------------------------------------------------------------------------
   efficientnetb7:
@@ -210,17 +760,19 @@ experiments:
       use_compression_blocks: false
       use_se_block: false
     image:
-      size: [600, 600, 3]  # EfficientNetB7 usa 600x600
+      size: [576, 576, 3]  # EfficientNetB7 usa 600x600
+      # size: [600, 600, 3]
     training:
       batch_size: 8  # Muito pesado
-      epochs: 80
+      epochs: 150
       dropout_rate: 0.5
       class_weights:
         0: 0.7
         1: 1.0
         2: 3.5
     optimizer:
-      learning_rate: 0.00003  # LR bem menor
+      # learning_rate: 0.00003  # LR bem menor
+      learning_rate: 0.0001
 
   # ---------------------------------------------------------------------------
   # NASNetMobile - Descoberto por AutoML, mobile-friendly
@@ -298,3 +850,85 @@ experiments:
       gaussian_noise: 0.05
     optimizer:
       learning_rate: 0.0001
+
+# =============================================================================
+# TUNING RESULTS - Melhores hiperparâmetros encontrados
+# =============================================================================
+tuning_results:
+  
+  # ---------------------------------------------------------------------------
+  # Experiment 1: Initial Tuning (F1-score = 0.90)
+  # max_trials: 35, epochs_per_trial: 50
+  # ---------------------------------------------------------------------------
+  experiment_001:
+    model_name: "MobileNetV3Large"
+    f1_score_test: 0.90
+    metrics:
+      accuracy: 0.90
+      precision: 0.90
+      recall: 0.90
+    best_hyperparameters:
+      learning_rate: 0.0002
+      dropout_rate: 0.2
+      l2_regularization: 2.640880361416632e-05
+      unfreeze_last_n_layers: 32
+    tuning_config:
+      max_trials: 30
+      epochs_per_trial: 50
+      batch_size: 32
+      random_seed: 42
+    augmentation:
+      enabled: true
+      horizontal_flip: true
+      rotation_range: 20.0
+      brightness_range: [0.8, 1.2]
+      contrast_range: [0.1, 1.1]
+      zoom_range: [0.9, 1.1]
+    class_weights:
+      caterpillar: 0.7
+      diabrotica_speciosa: 1.0
+      healthy: 3.5
+    image_size: [224, 224, 3]
+    logging: mlflow_enabled
+    date: "2026-02-28"
+    notes: "Initial tuning with 35 trials"
+
+  # ---------------------------------------------------------------------------
+  # Experiment 2: Optimized Tuning (F1-score = 0.94) ⭐ BEST
+  # max_trials: 30, epochs_per_trial: 50
+  # Difference: Reduced max_trials slightly, better L2 regularization
+  # ---------------------------------------------------------------------------
+  experiment_002:
+    model_name: "MobileNetV3Large"
+    f1_score_test: 0.94
+    metrics:
+      accuracy: 0.94
+      precision: 0.94
+      recall: 0.94
+    best_hyperparameters:
+      learning_rate: 0.0002
+      dropout_rate: 0.2
+      l2_regularization: 4.271103969962376e-05  # Increased from 2.64e-05
+      unfreeze_last_n_layers: 32
+    tuning_config:
+      max_trials: 30  # Reduced from 35
+      epochs_per_trial: 50
+      batch_size: 32
+      random_seed: 42
+    augmentation:
+      enabled: true
+      horizontal_flip: true
+      rotation_range: 20.0
+      brightness_range: [0.8, 1.2]
+      contrast_range: [0.1, 1.1]
+      zoom_range: [0.9, 1.1]
+    class_weights:
+      caterpillar: 0.7
+      diabrotica_speciosa: 1.0
+      healthy: 3.5
+    image_size: [224, 224, 3]
+    logging: mlflow_enabled
+    date: "2026-02-28"
+    notes: "Optimized tuning: reduced trials to 30, improved L2 regularization → 4.27% improvement in F1-score"
+    improvement_over_exp_001: "+0.04 (4% absolute improvement)"
+    key_difference: "L2 regularization: 2.64e-05 → 4.27e-05 (better regularization)"
