@@ -5,6 +5,8 @@ physical_devices = tf.config.list_physical_devices("GPU")
 tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 
+# from cnnClassifier.models.mobilevit import create_mobilevit
+# from cnnClassifier.models.vit_small_ds import create_vit_classifier
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ModelConfig, ImageConfig
 
@@ -45,16 +47,69 @@ class PrepareModel:
         self.data_augmentation = self._data_augmentation()
 
     def build_model(self) -> tf.keras.Model:
-        """Constrói modelo - custom ou pré-treinado baseado na configuração"""
+        """Constrói modelo - custom, pré-treinado ou transformer baseado na configuração"""
         logger.info(f"🏗️ Construindo modelo {self.model_config.model_name}")
 
-        # Verificar se deve usar modelo pré-treinado
+        model_name = self.model_config.model_name.lower()
+        # Lógica para selecionar arquitetura
+        if any(t in model_name for t in ["vit", "mobilevit"]):
+            return self._build_transformer_model(model_name)
         use_pretrained = getattr(self.model_config, "use_pretrained", False)
-
         if use_pretrained:
             return self._build_pretrained_model()
         else:
             return self._build_custom_model()
+
+    def _build_transformer_model(self) -> tf.keras.Model:
+        # TODO: Implementar construção de modelos transformer (ViT, MobileViT, ViTImageClassifier)
+        """
+        Constrói e retorna um modelo Vision Transformer (ViT), MobileViT ou ViTImageClassifier.
+        Adapta o pipeline para transformers, incluindo data augmentation, pré-processamento e pooling adequados.
+        """
+
+        model_name = self.model_config.model_name.lower()
+        logger.info(f"🔬 Construindo modelo Transformer: {model_name}")
+
+        # Dicionário de modelos: cada função retorna um modelo Keras funcional
+        vit_models = {
+            # "mobilevit": create_mobilevit,
+            # "vit_small_ds": create_vit_classifier,
+        }
+        if model_name not in vit_models:
+            supported_models = ", ".join(sorted(vit_models.keys()))
+            raise ValueError(
+                f"❌ Modelo '{model_name}' não é suportado para transformer! "
+                f"Modelos disponíveis: {supported_models}"
+            )
+
+        # Input e data augmentation
+        inputs = tf.keras.layers.Input(shape=self.image_config.size_tuple)
+        x = self.data_augmentation(inputs)
+
+        # Se o modelo NÃO faz rescaling internamente, aplica aqui
+        # Exemplo: MobileViT precisa de Rescaling externo, ViT já faz internamente
+        if model_name == "mobilevit":
+            x = tf.keras.layers.Rescaling(1.0 / 255)(x)
+            logger.info("Rescaling externo aplicado para MobileViT")
+        else:
+            logger.info(
+                f"Modelo {model_name} faz preprocessing interno ou não requer rescaling externo"
+            )
+
+        # Chama a função do modelo, conectando o pipeline
+        if model_name == "mobilevit":
+            model_body = vit_models[model_name](
+                num_classes=self.model_config.num_classes
+            )
+        elif model_name == "vit_small_ds":
+            model_body = vit_models[model_name](vanilla=False)
+        else:
+            raise ValueError(f"Modelo {model_name} não suportado!")
+
+        outputs = model_body(x)
+        model = tf.keras.Model(inputs=inputs, outputs=outputs)
+        logger.info(f"✅ Modelo transformer {model_name} construído com sucesso!")
+        return model
 
     def _build_pretrained_model(self) -> tf.keras.Model:
         """
@@ -67,17 +122,7 @@ class PrepareModel:
         l2_val = getattr(self.model_config, "l2_regularization", 0.01)
         logger.info(f"L2 regularization configurada: {l2_val}")
 
-        modelo_base = self._pretrained_model(
-            include_top=False, weights=self.model_config.weights
-        )
-
-        modelo_base.trainable = False
-        logger.info(f"🔒 Modelo base congelado: {len(modelo_base.layers)} camadas")
-
         inputs = tf.keras.layers.Input(shape=self.image_config.size_tuple)
-
-        # x = tf.keras.layers.Rescaling(1.0 / 255)(inputs)
-        # x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(inputs)
 
         x = inputs
 
@@ -104,31 +149,60 @@ class PrepareModel:
         # Normalização condicional baseada no modelo
         model_name = self.model_config.model_name.lower()
 
-        # Modelos que esperam entrada [0, 1]: VGG
-        if "vgg" in model_name:
-            x = tf.keras.layers.Rescaling(1.0 / 255)(x)
-            logger.info(
-                f"✅ Normalização [0,1]: Rescaling(1/255) para {self.model_config.model_name}"
-            )
-        # Modelos que esperam entrada [-1, 1]: MobileNet, Inception, NASNet, EfficientNet
+        # VGG: Preprocessing específico (RGB→BGR + zero-centering, SEM rescaling)
+        # Ref: https://keras.io/api/applications/vgg/vgg_preprocessing/
 
-        elif "mobilenet" in model_name:
-            logger.info(f"Skipping rescaling for {model_name}.")
+        preprocess_input = {
+            "mobilenetv3large": None,
+            "mobilenetv3small": None,
+            "inceptionv3": tf.keras.applications.inception_v3.preprocess_input(x),
+            "vgg19": tf.keras.applications.vgg19.preprocess_input(x),
+            "nasnetlarge": tf.keras.applications.nasnet.preprocess_input(x),
+            "nasnetmobile": tf.keras.applications.nasnet.preprocess_input(x),
+            "efficientnetb0": tf.keras.applications.efficientnet.preprocess_input(x),
+            "efficientnetb1": tf.keras.applications.efficientnet.preprocess_input(x),
+            "efficientnetb2": tf.keras.applications.efficientnet.preprocess_input(x),
+            "efficientnetb3": tf.keras.applications.efficientnet.preprocess_input(x),
+            "efficientnetb7": tf.keras.applications.efficientnet.preprocess_input(x),
+            "efficientnetv2b0": None,
+            "efficientnetv2b1": None,
+            "efficientnetv2b2": None,
+            "efficientnetv2b3": None,
+            "convnexttiny": tf.keras.applications.convnext.preprocess_input(x),
+            "convnextsmall": tf.keras.applications.convnext.preprocess_input(x),
+        }
 
-        elif any(keyword in model_name for keyword in ["inception", "nasnet"]):
-            x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(x)
-            logger.info(
-                f"✅ Normalização [-1,1]: Rescaling(2/255, -1) para {self.model_config.model_name}"
+        if model_name not in preprocess_input.keys():
+            raise ValueError(
+                f"❌ Modelo '{self.model_config.model_name}' não reconhecido para normalização! "
+                f"Verifique a configuração ou adicione lógica de normalização para este modelo."
             )
+
+        preprocess_model = preprocess_input.get(model_name)
+
+        if preprocess_model is not None:
+            x = preprocess_model
+            logger.info(
+                f"✅ Preprocessing específico aplicado para {self.model_config.model_name}"
+            )
+
         else:
-            logger.warning(
-                f"⚠️ Modelo '{self.model_config.model_name}' sem normalização específica - pulando"
+            logger.info(
+                f"✅ Modelo {self.model_config.model_name} tem preprocessing interno ativo - pulando normalização externa"
             )
 
         # IMPORTANTE: Chamar modelo base com training=False para manter BatchNormalization em modo de inferência
         # Isto é crítico durante fine-tuning: impede que as estatísticas armazenadas (mean/variance)
         # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
         # Referência: https://keras.io/guides/transfer_learning/
+
+        modelo_base = self._pretrained_model(
+            include_top=False, weights=self.model_config.weights
+        )
+
+        modelo_base.trainable = False
+        logger.info(f"🔒 Modelo base congelado: {len(modelo_base.layers)} camadas")
+
         x = modelo_base(x, training=False)
 
         use_compression_blocks = getattr(
@@ -329,16 +403,14 @@ class PrepareModel:
             "efficientnetb2": tf.keras.applications.EfficientNetB2,
             "efficientnetb3": tf.keras.applications.EfficientNetB3,
             "efficientnetb7": tf.keras.applications.EfficientNetB7,
+            "efficientnetv2b0": tf.keras.applications.EfficientNetV2B0,
+            "efficientnetv2b1": tf.keras.applications.EfficientNetV2B1,
+            "efficientnetv2b2": tf.keras.applications.EfficientNetV2B2,
+            "efficientnetv2b3": tf.keras.applications.EfficientNetV2B3,
+            "convnexttiny": tf.keras.applications.ConvNeXtTiny,
+            "convnextsmall": tf.keras.applications.ConvNeXtSmall,
         }
         model_class = models.get(model_name)
-
-        # Fallback: busca por substring (ex: "mobilenet" -> "mobilenetv3large")
-        if model_class is None:
-            for key, cls in models.items():
-                if key in model_name or model_name in key:
-                    model_class = cls
-                    logger.info(f"🔍 Modelo encontrado por substring: {key}")
-                    break
 
         # Erro se modelo não reconhecido
         if model_class is None:
@@ -364,47 +436,25 @@ class PrepareModel:
             "efficientnetb2",
             "efficientnetb3",
             "efficientnetb7",
+            "efficientnetv2b0",
+            "efficientnetv2b1",
+            "efficientnetv2b2",
+            "efficientnetv2b3",
+            "convnexttiny",
+            "convnextsmall",
         ]:
             comuns_params["input_tensor"] = None
             comuns_params["pooling"] = None
+
+        # EfficientNetV2: manter preprocessing interno explícito
+        if model_name.startswith("efficientnetv2") or model_name.startswith("convnext"):
+            comuns_params["include_preprocessing"] = True
 
         # Instancia APENAS o modelo necessário
         modelo_base = model_class(**comuns_params)
         logger.info(f"✅ Modelo base {model_class.__name__} carregado")
 
         return modelo_base
-        # if "mobilenet" in model_name:
-        #     modelo_base = tf.keras.applications.MobileNetV3Large(
-        #         # modelo_base = tf.keras.applications.MobileNetV3Small(
-        #         input_shape=self.image_config.size_tuple,
-        #         include_top=include_top,
-        #         weights=weights,
-        #         # include_preprocessing=False,
-        #     )
-        #     logger.info("🧠 Using model: MobileNetV3Large")
-        # elif "inception" in model_name:
-        #     modelo_base = tf.keras.applications.InceptionV3(
-        #         input_shape=self.image_config.size_tuple,
-        #         include_top=include_top,
-        #         weights=weights,
-        #     )
-        # elif "vgg" in model_name:
-        #     modelo_base = tf.keras.applications.VGG19(
-        #         input_shape=self.image_config.size_tuple,
-        #         include_top=include_top,
-        #         weights=weights,
-        #     )
-        # else:
-        #     # Default para MobileNet
-        #     modelo_base = tf.keras.applications.MobileNetV3Large(
-        #         input_shape=self.image_config.size_tuple,
-        #         include_top=include_top,
-        #         weights=weights,
-        #         # include_preprocessing=False,
-        #     )
-
-        # logger.info(f"Modelo base {model_name} carregado")
-        # return modelo_base
 
     def _compression_block(self, filters, kernel_size=3, strides=1, l2_config=None):
         return tf.keras.Sequential(

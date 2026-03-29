@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 import warnings
 import json
+import sys
+import platform
 import keras_tuner as kt
 import typer
 import random
@@ -25,16 +27,25 @@ from cnnClassifier.tuning.keras_tuner import KerasTunerSearch
 
 import mlflow
 
-from loguru import logger
 from dotenv import load_dotenv
 
 import dagshub
 
 load_dotenv()
 
-mlflow_uri = os.environ["MLFLOW_TRACKING_URI"]
-mlflow_user = os.environ["MLFLOW_TRACKING_USERNAME"]
-mlflow_pass = os.environ["MLFLOW_TRACKING_PASSWORD"]
+# Configuração de autenticação MLflow/Dagshub
+mlflow_uri = os.getenv("MLFLOW_TRACKING_URI")
+mlflow_user = os.getenv("MLFLOW_TRACKING_USERNAME")
+mlflow_pass = os.getenv("MLFLOW_TRACKING_PASSWORD")
+
+# Recomendado pela Dagshub: definir variáveis de ambiente para autenticação HTTP básica
+if mlflow_user and mlflow_pass:
+    os.environ["MLFLOW_TRACKING_USERNAME"] = mlflow_user
+    os.environ["MLFLOW_TRACKING_PASSWORD"] = mlflow_pass
+
+# Definir o tracking URI do MLflow
+if mlflow_uri:
+    mlflow.set_tracking_uri(mlflow_uri)
 
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
@@ -90,15 +101,27 @@ def main(
 
         # if use_mlflow:
 
-        mlflow.set_experiment(f"tuning-{experiment}")
+        # Verificar e restaurar experimento deletado, se necessário
+        experiment_name = f"tuning-{experiment}"
+        try:
+            experiment = mlflow.get_experiment_by_name(experiment_name)
+            if experiment and experiment.lifecycle_stage == "deleted":
+                logger.warning(
+                    f"⚠️ Experimento '{experiment_name}' estava deletado. Restaurando..."
+                )
+                mlflow.tracking.MlflowClient().restore_experiment(
+                    experiment.experiment_id
+                )
+                logger.info(
+                    f"✅ Experimento '{experiment_name}' restaurado com sucesso!"
+                )
+        except Exception as e:
+            logger.warning(f"⚠️ Erro ao verificar experimento: {e}")
 
         dagshub.init(
             repo_owner="nanshibukawa", repo_name="soybean-leaf-pest-damage", mlflow=True
         )
-        # mlflow.set_tracking_uri("file:./mlruns")
-        mlflow.set_tracking_uri(
-            "https://dagshub.com/nanshibukawa/soybean-leaf-pest-damage.mlflow"
-        )
+        mlflow.set_experiment(experiment_name)
 
         # 📊 Configurar coleta de system metrics
         mlflow.set_system_metrics_sampling_interval(10)  # Coletar a cada 10 segundos
@@ -120,6 +143,35 @@ def main(
             mlflow.log_param("epochs_per_trial", epochs_per_trial)
             mlflow.log_param("log_trials_to_mlflow", log_trials)
             logger.info(f"🎯 Batch Size da Config: {model_config.batch_size}")
+
+            # Logar versões de software para reprodutibilidade
+            mlflow.log_param("python_version", sys.version.split()[0])
+            mlflow.log_param("tensorflow_version", tf.__version__)
+            mlflow.log_param("numpy_version", np.__version__)
+            mlflow.log_param("platform", platform.platform())
+
+            # CUDA/cuDNN (se disponível)
+            try:
+                if tf.test.is_built_with_cuda():
+                    build_info = tf.sysconfig.get_build_info()
+                    mlflow.log_param(
+                        "cuda_version", build_info.get("cuda_version", "N/A")
+                    )
+                    mlflow.log_param(
+                        "cudnn_version", build_info.get("cudnn_version", "N/A")
+                    )
+                    logger.info(
+                        f"📦 CUDA: {build_info.get('cuda_version', 'N/A')}, cuDNN: {build_info.get('cudnn_version', 'N/A')}"
+                    )
+                else:
+                    mlflow.log_param("cuda_version", "CPU-only")
+                    mlflow.log_param("cudnn_version", "CPU-only")
+            except Exception as e:
+                logger.warning(f"⚠️ Não foi possível detectar CUDA/cuDNN: {e}")
+
+            logger.info(
+                f"📦 Python: {sys.version.split()[0]}, TensorFlow: {tf.__version__}, NumPy: {np.__version__}"
+            )
 
             # Logar class_weights se existir
             class_weights = getattr(model_config, "class_weights", None)
@@ -235,7 +287,9 @@ def main(
 
                 # 4c) Retreinar com melhores hiperparâmetros
                 logger.info("📈 Fase 2/3: Retreinando modelo final...")
-                best_model, history = tuner.retrain_best_model(epochs=final_epochs)
+                with mlflow.start_run(nested=True, run_name="final_retrain"):
+                    mlflow.tensorflow.autolog(log_models=False, log_datasets=False)
+                    best_model, history = tuner.retrain_best_model(epochs=final_epochs)
             else:
                 # Modo retrain-only: carregar HPs e retreinar direto
                 logger.info("🔁 Modo 'retrain': usando hiperparâmetros salvos")
@@ -263,7 +317,9 @@ def main(
                 tuner.best_hp = hp
 
                 logger.info("📈 Fase 2/3: Retreinando modelo final (retrain-only)...")
-                best_model, history = tuner.retrain_best_model(epochs=final_epochs)
+                with mlflow.start_run(nested=True, run_name="final_retrain"):
+                    mlflow.tensorflow.autolog(log_models=False, log_datasets=False)
+                    best_model, history = tuner.retrain_best_model(epochs=final_epochs)
 
             logger.info("✅ Stage 4 completo!")
 
@@ -273,6 +329,25 @@ def main(
                 "history": history,
                 "tuner": tuner,
             }
+
+            # Logar curvas por época do retreino no run pai (além do child final_retrain)
+            if history is not None and hasattr(history, "history"):
+                try:
+                    for metric_name, values in history.history.items():
+                        if not values:
+                            continue
+                        for epoch_idx, value in enumerate(values, start=1):
+                            if value is not None:
+                                mlflow.log_metric(
+                                    f"retrain_{metric_name}",
+                                    float(value),
+                                    step=epoch_idx,
+                                )
+                    logger.info(
+                        "📈 Curvas do retreino logadas no run pai (prefixo: retrain_*)"
+                    )
+                except Exception as e:
+                    logger.warning(f"⚠️ Falha ao logar curvas por época no run pai: {e}")
 
             if tuner.best_hp:
                 mlflow.log_param("best_lr", tuner.best_hp.get("learning_rate"))
@@ -433,6 +508,29 @@ def main(
             )
             if tflite_path.exists():
                 mlflow.log_artifact(tflite_path, artifact_path="models")
+
+            # Logar visualização da arquitetura
+            architecture_path = (
+                Path("artifacts")
+                / "models"
+                / "mobile"
+                / f"{model_config.model_name}_architecture.png"
+            )
+            if architecture_path.exists():
+                mlflow.log_artifact(
+                    architecture_path, artifact_path="model_architecture"
+                )
+                logger.info("📊 Arquitetura PNG logada no MLflow")
+
+            summary_path = (
+                Path("artifacts")
+                / "models"
+                / "mobile"
+                / f"{model_config.model_name}_summary.txt"
+            )
+            if summary_path.exists():
+                mlflow.log_artifact(summary_path, artifact_path="model_architecture")
+                logger.info("📝 Model summary logado no MLflow")
 
             mlflow.keras.log_model(
                 best_model,

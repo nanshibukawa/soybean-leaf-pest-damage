@@ -9,6 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .vscode
+.env
 
 # Jupyter notebooks 
 *.ipynb
@@ -20,6 +21,14 @@ data/processed/
 artifacts/
 mlruns/
 streamlit/
+**/**.png
+**/**.jpeg
+**/**.md
+**/**.pdf
+**/**.docx
+**/**.db
+**/**.drawio
+**/**.plantuml
 
 # OS generated files
 .DS_Store
