@@ -1,14 +1,16 @@
 from typing import Optional
 import tensorflow as tf
 
-physical_devices = tf.config.list_physical_devices("GPU")
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
-
 
 # from cnnClassifier.models.mobilevit import create_mobilevit
 # from cnnClassifier.models.vit_small_ds import create_vit_classifier
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ModelConfig, ImageConfig
+
+
+physical_devices = tf.config.list_physical_devices("GPU")
+tf.config.experimental.set_memory_growth(physical_devices[0], True)
+
 
 logger = configure_logger(__name__)
 
@@ -126,24 +128,6 @@ class PrepareModel:
 
         x = inputs
 
-        # use_data_augmentation = getattr(
-        #     self.model_config, "use_data_augmentation", False
-        # )
-        # logger.info(f"🔒 Using Data Augmentation: {use_data_augmentation}")
-
-        # if use_data_augmentation:
-        # Gaussian Noise
-        # if (
-        #     hasattr(self.model_config, "gaussian_noise")
-        #     and self.model_config.gaussian_noise
-        # ):
-        #     noise_std = self.model_config.gaussian_noise
-        # else:
-        #     noise_std = 0.05
-        # logger.info(f"Adicionando Gaussian Noise: {noise_std}")
-
-        # x = tf.keras.layers.GaussianNoise(noise_std)(x)
-
         x = self.data_augmentation(x)
 
         # Normalização condicional baseada no modelo
@@ -259,6 +243,7 @@ class PrepareModel:
             tf.keras.Model: Modelo compilado pronto para treinamento
         """
         logger.info("Construindo modelo customizado CNN")
+        l2_val = getattr(self.model_config, "l2_regularization", 0.005)
 
         modelo = tf.keras.models.Sequential(
             [
@@ -281,14 +266,14 @@ class PrepareModel:
                 tf.keras.layers.Dense(
                     128,
                     activation="relu",
-                    kernel_regularizer=tf.keras.regularizers.L2(0.005),
+                    kernel_regularizer=tf.keras.regularizers.L2(l2_val),
                 ),
                 tf.keras.layers.Dropout(self.model_config.dropout_rate),
                 # SAÍDA COM L2 REGULARIZATION
                 tf.keras.layers.Dense(
                     self.model_config.num_classes,
                     activation=activation_last_layer,
-                    kernel_regularizer=tf.keras.regularizers.L2(0.001),
+                    kernel_regularizer=tf.keras.regularizers.L2(l2_val),
                 ),
             ]
         )
@@ -316,16 +301,17 @@ class PrepareModel:
             # return tf.keras.layers.Activation("linear")
             return tf.keras.Sequential(layers)
 
-        # if (
-        #     hasattr(self.model_config, "gaussian_noise")
-        #     and self.model_config.gaussian_noise
-        # ):
-        #     noise_std = self.model_config.gaussian_noise
-        # else:
-        #     noise_std = 0.05
-        # logger.info(f"Adicionando Gaussian Noise: {noise_std}")
-        # layers.append(tf.keras.layers.GaussianNoise(noise_std))
-        # x = tf.keras.layers.GaussianNoise(noise_std)(x)
+        # Gaussian Noise
+        if (
+            hasattr(self.model_config, "gaussian_noise")
+            and self.model_config.gaussian_noise
+        ):
+            # std de ruído configurável, default 0.05
+            noise_std = self.model_config.gaussian_noise
+            layers.append(tf.keras.layers.GaussianNoise(noise_std))
+            logger.info(
+                f"Data Augmentation: Gaussian Noise adicionado - noise: {noise_std}"
+            )
 
         if (
             hasattr(self.model_config, "horizontal_flip")

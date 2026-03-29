@@ -145,56 +145,6 @@ class DataSplitter:
             "test": summarize(test_data),
         }
 
-    # def load_train_data(self):
-    #     """
-    #     Carrega dados de treino do diretório configurado.
-
-    #     Cria um dataset TensorFlow para treino carregando imagens do diretório especificado
-    #     e aplicando a proporção de divisão de treino configurada. O dataset é automaticamente
-    #     embaralhado e agrupado em lotes de acordo com a configuração.
-
-    #     Returns:
-    #         tf.data.Dataset: Dataset de treino contendo imagens agrupadas em batchs e
-    #             pré-processadas com seus rótulos correspondentes. Cada batch contém imagens
-    #             redimensionadas para as dimensões configuradas (altura x largura) e o
-    #             dataset usa o subconjunto de treino baseado na proporção de divisão.
-    #     """
-    #     treino = tf.keras.utils.image_dataset_from_directory(
-    #         directory=self.image_config.data_dir,
-    #         validation_split=1 - self.data_split_config.train_ratio,
-    #         shuffle=True,
-    #         subset=self.subset.TRAIN.value,
-    #         seed=self.data_split_config.random_seed,
-    #         image_size=(self.image_config.altura, self.image_config.largura),
-    #         batch_size=self.data_split_config.batch_size,
-    #     )
-    #     return treino
-
-    # def load_validation_data(self):
-    #     """Carrega dados de validação do diretório configurado.
-
-    #     Cria um dataset TensorFlow para validação carregando imagens do diretório
-    #     especificado e aplicando a proporção de divisão de validação configurada.
-    #     O dataset é automaticamente embaralhado e agrupado em batchs de acordo com a
-    #     configuração, usando a mesma semente dos dados de treino para divisões consistentes.
-
-    #     Returns:
-    #         tf.data.Dataset: Dataset de validação contendo imagens agrupadas em batchs e
-    #             pré-processadas com seus rótulos correspondentes. Cada batch contém imagens
-    #             redimensionadas para as dimensões configuradas (altura x largura) e o
-    #             dataset usa o subconjunto de validação baseado na proporção de divisão.
-    #     """
-    #     validation = tf.keras.utils.image_dataset_from_directory(
-    #         directory=self.image_config.data_dir,
-    #         validation_split=self.data_split_config.val_ratio,
-    #         shuffle=True,
-    #         subset=self.subset.VALIDATION.value,
-    #         seed=self.data_split_config.random_seed,
-    #         image_size=(self.image_config.altura, self.image_config.largura),
-    #         batch_size=self.data_split_config.batch_size,
-    #     )
-    #     return validation
-
 
 if __name__ == "__main__":
     logger.info("Iniciando o DataSplitter...")
