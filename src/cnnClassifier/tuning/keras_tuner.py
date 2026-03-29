@@ -77,6 +77,7 @@ class KerasTunerSearch:
                 "nasnet",
                 "efficientnet",
                 "resnet",
+                "convnext",
             ]
 
             for layer in model.layers:
@@ -294,6 +295,7 @@ class KerasTunerSearch:
             "nasnet",
             "efficientnet",
             "resnet",
+            "convnext",
         ]
 
         for layer in model.layers:
@@ -332,10 +334,10 @@ class KerasTunerSearch:
         model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=self.best_hp.get("learning_rate"),
-                epsilon=1e-8,
-                beta_1=0.9,
-                beta_2=0.999,
-                amsgrad=False,
+                # epsilon=1e-8,
+                # beta_1=0.9,
+                # beta_2=0.999,
+                # amsgrad=False,
             ),
             loss=self.model_config.loss_function,
             metrics=self.model_config.metrics,
@@ -379,6 +381,62 @@ class KerasTunerSearch:
         # Salvar modelo em múltiplos formatos
         output_dir = Path("artifacts/models/mobile")
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # 📊 Salvar visualização da arquitetura do modelo final
+        logger.info("\n" + "=" * 70)
+        logger.info("📊 SALVANDO VISUALIZAÇÃO DA ARQUITETURA")
+        logger.info("=" * 70)
+
+        try:
+            from tensorflow.keras.utils import plot_model
+
+            # 1. PNG da arquitetura
+            architecture_path = (
+                output_dir / f"{self.model_config.model_name}_architecture.png"
+            )
+            plot_model(
+                model,
+                to_file=str(architecture_path),
+                show_shapes=True,
+                show_layer_names=True,
+                rankdir="TB",  # Top to Bottom
+                expand_nested=True,
+                dpi=150,
+                show_layer_activations=True,
+            )
+            arch_size = architecture_path.stat().st_size / 1024
+            logger.info(
+                f"   ✅ Arquitetura PNG: {architecture_path.name} ({arch_size:.1f} KB)"
+            )
+
+            # 2. Summary em texto
+            summary_path = output_dir / f"{self.model_config.model_name}_summary.txt"
+            with open(summary_path, "w", encoding="utf-8") as f:
+                model.summary(print_fn=lambda x: f.write(x + "\n"))
+            summary_size = summary_path.stat().st_size / 1024
+            logger.info(
+                f"   ✅ Model Summary: {summary_path.name} ({summary_size:.1f} KB)"
+            )
+
+            # 3. Informações detalhadas
+            total_params = model.count_params()
+            trainable_params = sum(
+                [tf.size(w).numpy() for w in model.trainable_weights]
+            )
+            non_trainable_params = sum(
+                [tf.size(w).numpy() for w in model.non_trainable_weights]
+            )
+
+            logger.info(f"\n   📈 Parâmetros do Modelo:")
+            logger.info(f"      Total:          {total_params:,}")
+            logger.info(f"      Treináveis:     {trainable_params:,}")
+            logger.info(f"      Não-treináveis: {non_trainable_params:,}")
+            logger.info("=" * 70 + "\n")
+
+        except Exception as e:
+            logger.warning(
+                f"⚠️ Não foi possível salvar visualização da arquitetura: {e}"
+            )
 
         self.save_multiple_formats(
             model, output_dir, self.model_config.model_name, train_ds

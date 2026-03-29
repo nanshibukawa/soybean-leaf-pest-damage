@@ -17,16 +17,16 @@ class ModelTraining:
     """
 
     def __init__(self, model: tf.keras.Model, model_config: ModelConfig):
-        self.model_config = model_config
-        self.model = model
-        self.history = None
         """
         Inicializa o componente de treinamento do modelo.
-        
+
         Args:
             model: Modelo Keras pré-construído para treinar
             model_config: Configuração contendo parâmetros de treinamento (épocas, taxa de aprendizado, etc.)
         """
+        self.model_config = model_config
+        self.model = model
+        self.history = None
 
     def train_model(
         self, train_data: tf.data.Dataset, validation_data: tf.data.Dataset
@@ -128,21 +128,6 @@ class ModelTraining:
         }
 
     def _compile_model(self):
-        # TODO: Implementar a seleção do otimizador baseado em model_config
-
-        # self.model.compile(
-        #     optimizer=tf.keras.optimizers.AdamW(
-        #         learning_rate=self.model_config.learning_rate,  # 0.0001
-        #         weight_decay=0.01,                              # Regularização weight decay
-        #         beta_1=0.9,
-        #         beta_2=0.999,
-        #         epsilon=1e-7
-        #     ),
-        #     loss=self.model_config.loss_function,
-        #     metrics=self.model_config.metrics
-        # )
-        # logger.info("Modelo AdamW compilado para reduzir gap treino/validação")
-
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=self.model_config.learning_rate,
@@ -152,15 +137,3 @@ class ModelTraining:
             metrics=self.model_config.metrics,
         )
         logger.info("Modelo Adam recompilado com configurações de treinamento")
-
-        # self.model.compile(
-        #     optimizer=tf.keras.optimizers.RMSprop(
-        #         learning_rate=self.model_config.learning_rate,  # 0.001
-        #         rho=0.9,                    # Discounting factor para gradientes antigos
-        #         momentum=0.9,               # Momentum padrão para RMSprop
-        #         epsilon=1e-7,               # Estabilidade numérica
-        #         centered=False              # RMSprop padrão (não centrado)
-        #     ),
-        #     loss=self.model_config.loss_function,
-        #     metrics=self.model_config.metrics
-        # )
