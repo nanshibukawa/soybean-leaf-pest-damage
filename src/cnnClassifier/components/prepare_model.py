@@ -26,7 +26,6 @@ class PrepareModel:
             model_config: Configuração do modelo
             image_config: Configuração da imagem
         """
-
         if model_config is None:
             raise ValueError(
                 " ModelConfig é obrigatória! Use ModelConfig.from_yaml() "
@@ -64,6 +63,10 @@ class PrepareModel:
         Returns:
             tf.keras.Model: Modelo compilado pronto para treinamento
         """
+
+        l2_val = getattr(self.model_config, "l2_regularization", 0.01)
+        logger.info(f"L2 regularization configurada: {l2_val}")
+
         modelo_base = self._pretrained_model(
             include_top=False, weights=self.model_config.weights
         )
@@ -101,13 +104,17 @@ class PrepareModel:
         # Normalização condicional baseada no modelo
         model_name = self.model_config.model_name.lower()
 
-        # Modelos que esperam entrada [0, 1]: VGG, EfficientNet
-        if "vgg" in model_name or "efficientnet" in model_name:
+        # Modelos que esperam entrada [0, 1]: VGG
+        if "vgg" in model_name:
             x = tf.keras.layers.Rescaling(1.0 / 255)(x)
             logger.info(
                 f"✅ Normalização [0,1]: Rescaling(1/255) para {self.model_config.model_name}"
             )
-        # Modelos que esperam entrada [-1, 1]: MobileNet, Inception, NASNet
+        # Modelos que esperam entrada [-1, 1]: MobileNet, Inception, NASNet, EfficientNet
+
+        elif "mobilenet" in model_name:
+            logger.info(f"Skipping rescaling for {model_name}.")
+
         elif any(keyword in model_name for keyword in ["inception", "nasnet"]):
             x = tf.keras.layers.Rescaling(scale=2.0 / 255, offset=-1.0)(x)
             logger.info(
@@ -118,7 +125,10 @@ class PrepareModel:
                 f"⚠️ Modelo '{self.model_config.model_name}' sem normalização específica - pulando"
             )
 
-        # Modelo pré-treinado
+        # IMPORTANTE: Chamar modelo base com training=False para manter BatchNormalization em modo de inferência
+        # Isto é crítico durante fine-tuning: impede que as estatísticas armazenadas (mean/variance)
+        # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
+        # Referência: https://keras.io/guides/transfer_learning/
         x = modelo_base(x, training=False)
 
         use_compression_blocks = getattr(
@@ -131,10 +141,10 @@ class PrepareModel:
 
         # Blocos compressions e SE após o backbone (condicionais)
         if use_compression_blocks:
-            x = self._compression_block(32)(x)
+            x = self._compression_block(32, l2_config=l2_val)(x)
             if use_se_block:
                 x = self.se_block(x)
-            x = self._compression_block(64)(x)
+            x = self._compression_block(64, l2_config=l2_val)(x)
         elif use_se_block:
             x = self.se_block(x)
 
@@ -145,7 +155,8 @@ class PrepareModel:
             128,
             activation="relu",
             kernel_constraint=tf.keras.constraints.MaxNorm(3),
-            kernel_regularizer=tf.keras.regularizers.L2(0.01),
+            # kernel_regularizer=tf.keras.regularizers.L2(0.01),
+            kernel_regularizer=tf.keras.regularizers.L2(l2_val),
         )(x)
 
         x = tf.keras.layers.BatchNormalization()(x)
@@ -153,7 +164,8 @@ class PrepareModel:
         outputs = tf.keras.layers.Dense(
             self.model_config.num_classes,
             activation="softmax",
-            kernel_regularizer=tf.keras.regularizers.L2(0.01),
+            # kernel_regularizer=tf.keras.regularizers.L2(0.01),
+            kernel_regularizer=tf.keras.regularizers.L2(l2_val),
         )(x)
 
         modelo = tf.keras.Model(inputs=inputs, outputs=outputs)
@@ -313,6 +325,9 @@ class PrepareModel:
             "nasnetlarge": tf.keras.applications.NASNetLarge,
             "nasnetmobile": tf.keras.applications.NASNetMobile,
             "efficientnetb0": tf.keras.applications.EfficientNetB0,
+            "efficientnetb1": tf.keras.applications.EfficientNetB1,
+            "efficientnetb2": tf.keras.applications.EfficientNetB2,
+            "efficientnetb3": tf.keras.applications.EfficientNetB3,
             "efficientnetb7": tf.keras.applications.EfficientNetB7,
         }
         model_class = models.get(model_name)
@@ -325,11 +340,12 @@ class PrepareModel:
                     logger.info(f"🔍 Modelo encontrado por substring: {key}")
                     break
 
-        # Default: MobileNetV3Large
+        # Erro se modelo não reconhecido
         if model_class is None:
-            model_class = tf.keras.applications.MobileNetV3Large
-            logger.warning(
-                f"⚠️ Modelo '{model_name}' não reconhecido. Usando MobileNetV3Large."
+            supported_models = ", ".join(sorted(models.keys()))
+            raise ValueError(
+                f"❌ Modelo '{model_name}' não é suportado!\n"
+                f"   Modelos disponíveis: {supported_models}"
             )
 
         # Parâmetros comuns
@@ -344,6 +360,9 @@ class PrepareModel:
             "nasnetlarge",
             "nasnetmobile",
             "efficientnetb0",
+            "efficientnetb1",
+            "efficientnetb2",
+            "efficientnetb3",
             "efficientnetb7",
         ]:
             comuns_params["input_tensor"] = None
@@ -387,7 +406,7 @@ class PrepareModel:
         # logger.info(f"Modelo base {model_name} carregado")
         # return modelo_base
 
-    def _compression_block(self, filters, kernel_size=3, strides=1):
+    def _compression_block(self, filters, kernel_size=3, strides=1, l2_config=None):
         return tf.keras.Sequential(
             [
                 tf.keras.layers.DepthwiseConv2D(
@@ -398,7 +417,7 @@ class PrepareModel:
                     1,
                     padding="same",
                     activation="relu",
-                    kernel_regularizer=tf.keras.regularizers.L2(0.01),
+                    kernel_regularizer=tf.keras.regularizers.L2(l2_config),
                 ),
                 tf.keras.layers.BatchNormalization(),
                 tf.keras.layers.ReLU(),

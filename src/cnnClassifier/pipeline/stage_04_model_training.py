@@ -61,7 +61,7 @@ class ModelTrainingPipeline:
             trained_model_path = (
                 MODELS_DIR / f"{self.config.model_name.lower()}_trained.keras"
             )
-            model.save(trained_model_path)
+            model.save(str(trained_model_path))
             logger.info(f"✅ Trained model saved to: {trained_model_path}")
 
             return {

@@ -9,6 +9,7 @@ import numpy as np
 from cnnClassifier.entity.config_entity import ModelConfig
 from cnnClassifier.components.data_splitter import DataSplitter
 from cnnClassifier.components.prepare_model import PrepareModel
+from cnnClassifier.tuning.mlflow_tuning import MLflowHyperModel
 
 
 class KerasTunerSearch:
@@ -38,38 +39,27 @@ class KerasTunerSearch:
         Returns:
             Modelo Keras compilado
         """
-        # Hiperparâmetros a otimizar
-        hp_learning_rate = hp.Float(
-            "learning_rate",
-            min_value=1e-6,
-            max_value=2e-4,
-            sampling="log",
-            default=1e-4,
-        )
-        dropout_rate = hp.Float(
-            "dropout_rate", min_value=0.2, max_value=0.4, step=0.1, default=0.3
-        )
-        unfreeze_last_n = hp.Int(
-            "unfreeze_last_n_layers",
-            min_value=8,
-            max_value=32,
-            step=4,
-            default=16,
-        )
+        # Carregar ranges de tuning do YAML baseado no modelo
+        search_space = self.model_config.get_tuning_search_space()
 
-        # L2 Regularization para reduzir overfitting
-        l2_reg = hp.Float(
-            "l2_regularization",
-            min_value=1e-6,
-            max_value=1e-3,
-            sampling="log",
-            default=1e-5,
-        )
+        # Hiperparâmetros a otimizar (com fallback para defaults)
+        lr_range = search_space.get("learning_rate")
+
+        dropout_range = search_space.get("dropout_rate")
+
+        unfreeze_range = search_space.get("unfreeze_last_n_layers")
+
+        l2_range = search_space.get("l2_regularization")
+
+        hp_learning_rate = hp.Float("learning_rate", **lr_range)
+        dropout_rate = hp.Float("dropout_rate", **dropout_range)
+        unfreeze_last_n = hp.Int("unfreeze_last_n_layers", **unfreeze_range)
+        l2_reg = hp.Float("l2_regularization", **l2_range)
 
         logger.info(
             f"Building model: lr={hp_learning_rate:.6f}, dropout={dropout_rate:.2f}, unfreeze={unfreeze_last_n}, l2={l2_reg:.6f}"
         )
-
+        self.model_config.l2_regularization = float(l2_reg)
         self.model_config.dropout_rate = float(dropout_rate)
 
         image_config = self.data_splitter.image_config
@@ -103,14 +93,52 @@ class KerasTunerSearch:
 
             if backbone is not None:
                 total_layers = len(backbone.layers)
-                # congela iniciais, libera últimas unfreeze_last_n
                 layers_to_unfreeze = min(unfreeze_last_n, total_layers)
-                for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                    layer.trainable = False
-                for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                    layer.trainable = True
-                    if hasattr(layer, "kernel_regularizer"):
-                        layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
+
+                # 1. Garante que o backbone comece todo congelado
+                backbone.trainable = True  # Permitir que as subcamadas sejam alteradas
+
+                # 2. Divide entre congeladas e descongeladas
+                cutoff = total_layers - layers_to_unfreeze
+
+                for i, layer in enumerate(backbone.layers):
+                    if i < cutoff:
+                        layer.trainable = False
+                    else:
+                        # ✅ SÓ descongela se NÃO for BatchNormalization
+                        if not isinstance(layer, tf.keras.layers.BatchNormalization):
+                            layer.trainable = True
+                        else:
+                            layer.trainable = False
+
+                logger.info(
+                    f"✅ Fine-tune: liberadas {layers_to_unfreeze} camadas (BNs mantidos congelados)"
+                )
+
+                # total_layers = len(backbone.layers)
+                # # congela iniciais, libera últimas unfreeze_last_n
+                # layers_to_unfreeze = min(unfreeze_last_n, total_layers)
+
+                # for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
+                #     layer.trainable = False
+                # for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
+                #     # # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
+                #     # if not isinstance(layer, tf.keras.layers.BatchNormalization):
+                #     #     layer.trainable = True
+                #     #     if hasattr(layer, "kernel_regularizer"):
+                #     #         layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
+                #     # else:
+                #     #     layer.trainable = False
+
+                #     # layer.trainable = True
+                #     # if hasattr(layer, "kernel_regularizer"):
+                #     # layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
+
+                #     if not isinstance(layer, tf.keras.layers.BatchNormalization):
+                #         layer.trainable = True
+                #     else:
+                #         layer.trainable = False
+
                 logger.info(
                     f"✅ Backbone fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas com L2={l2_reg:.6f}"
                 )
@@ -137,21 +165,38 @@ class KerasTunerSearch:
 
         return model
 
-    def search(self, max_trials: int = 30, epochs_per_trial: int = 30):
+    def search(
+        self,
+        max_trials: int,
+        epochs_per_trial: int,
+        log_trials_to_mlflow: bool = True,
+    ):
         """
         Executa busca de hiperparâmetros com Bayesian Optimization.
 
         Args:
             max_trials: Número máximo de configurações a testar
             epochs_per_trial: Épocas de treino por candidato
+            log_trials_to_mlflow: Se True, loga cada trial no MLflow como child run
         """
         logger.info("Iniciando busca com Bayesian Optimization...")
         logger.info(f"   Max trials: {max_trials}")
         logger.info(f"   Epochs per trial: {epochs_per_trial}")
+        logger.info(f"   Log trials to MLflow: {log_trials_to_mlflow}")
+
+        # Escolher hypermodel baseado no flag de MLflow
+        if log_trials_to_mlflow:
+            hypermodel = MLflowHyperModel(
+                build_fn=self.build_model, experiment_name=self.model_config.model_name
+            )
+            logger.info("🔗 MLflow trial logging ATIVADO")
+        else:
+            hypermodel = self.build_model
+            logger.info("🔗 MLflow trial logging DESATIVADO")
 
         # Criar tuner
         self.tuner = kt.BayesianOptimization(
-            hypermodel=self.build_model,
+            hypermodel=hypermodel,
             objective="val_accuracy",
             max_trials=max_trials,
             num_initial_points=5,
@@ -193,6 +238,11 @@ class KerasTunerSearch:
         logger.info("✅ Melhor modelo recuperado - pronto para retreino")
 
     def _callbacks(self):
+        # Suprimir warnings de HDF5 durante tuning (checkpoints internos do EarlyStopping)
+        import warnings
+
+        warnings.filterwarnings("ignore", message=".*HDF5 file.*")
+
         callbacks = [
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_accuracy",
@@ -221,6 +271,12 @@ class KerasTunerSearch:
         """
         if self.best_hp is None:
             raise ValueError("Execute .search() antes de .retrain_best_model()")
+
+        # Suprimir warnings de HDF5 do EarlyStopping
+        import warnings
+
+        warnings.filterwarnings("ignore", message=".*HDF5.*")
+        warnings.filterwarnings("ignore", category=UserWarning, module="keras")
 
         logger.info(
             f"Retreinando modelo com melhores hiperparâmetros por {epochs} épocas..."
@@ -259,7 +315,11 @@ class KerasTunerSearch:
             for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
                 layer.trainable = False
             for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                layer.trainable = True
+                # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
+                if not isinstance(layer, tf.keras.layers.BatchNormalization):
+                    layer.trainable = True
+                else:
+                    layer.trainable = False
             logger.info(
                 f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
             )
@@ -374,18 +434,15 @@ class KerasTunerSearch:
         logger.info("=" * 70)
 
         # 1. H5 (Keras legado) - Para retreino
-        logger.info("\n1️⃣ Salvando H5 (legado Keras)...")
-        h5_path = output_dir / f"{model_name}_keras_tuner_best.h5"
-        model.save(h5_path)
-        h5_size = h5_path.stat().st_size / (1024 * 1024)
-        logger.info(f"   ✅ {h5_path.name} ({h5_size:.2f} MB)")
-
-        # 2. .keras (Nativo TF 2.8+) - Recomendado
-        logger.info("\n2️⃣ Salvando .keras (formato nativo TF 2.8+)...")
+        # 1. .keras (Nativo TF 2.8+) - Recomendado
+        logger.info("\n1️⃣ Salvando .keras (formato nativo TF 2.8+)...")
         keras_path = output_dir / f"{model_name}_keras_tuner_best.keras"
-        model.save(keras_path)
+        model.save(str(keras_path))
         keras_size = keras_path.stat().st_size / (1024 * 1024)
         logger.info(f"   ✅ {keras_path.name} ({keras_size:.2f} MB)")
+
+        # Definir h5_size para compatibilidade com o resumo
+        h5_size = keras_size
 
         # 4. TFLite (mobile/edge) - Com quantização FP16
         logger.info("\n4️⃣ Salvando TFLite (mobile/edge)...")
@@ -435,11 +492,8 @@ class KerasTunerSearch:
         logger.info("\n" + "=" * 70)
         logger.info("📦 RESUMO DOS FORMATOS SALVOS:")
         logger.info("=" * 70)
-        logger.info(f"\n📁 Diretório: {output_dir}")
+        logger.info("\n📁 Diretório: {output_dir}")
         logger.info("\n┌─ DESENVOLVIMENTO:")
-        logger.info(
-            f"│  H5       {h5_size:6.2f} MB   - Para retreino (compatível com Keras/TF)"
-        )
         logger.info(
             f"│  .keras   {keras_size:6.2f} MB   - Formato nativo TF 2.8+ (✅ recomendado)"
         )
