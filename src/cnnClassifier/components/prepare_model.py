@@ -126,8 +126,8 @@ class PrepareModel:
         modelo_base, preprocess_layer = ModelFactory.get_pretrained_model(
             model_name=self.model_config.model_name,
             input_shape=self.image_config.size_tuple,
-            include_top=False, 
-            weights=self.model_config.weights
+            include_top=False,
+            weights=self.model_config.weights,
         )
 
         l2_val = getattr(self.model_config, "l2_regularization", 0.01)
@@ -163,10 +163,10 @@ class PrepareModel:
 
         # Blocos compressions e SE após o backbone (condicionais)
         if use_compression_blocks:
-            x = compression_block(32)(x)
+            x = compression_block(32, l2_reg=l2_val)(x)
             if use_se_block:
                 x = se_block(x)
-            x = compression_block(64)(x)
+            x = compression_block(64, l2_reg=l2_val)(x)
         elif use_se_block:
             x = se_block(x)
         x = tf.keras.layers.GlobalAveragePooling2D()(x)
@@ -187,7 +187,7 @@ class PrepareModel:
             activation="softmax",
             # kernel_regularizer=tf.keras.regularizers.L2(0.01),
             kernel_regularizer=tf.keras.regularizers.L2(l2_val),
-            name="classification_head"
+            name="classification_head",
         )(x)
 
         modelo = tf.keras.Model(inputs=inputs, outputs=outputs)
@@ -244,7 +244,6 @@ class PrepareModel:
 
         logger.info(f"Modelo {self.model_config.model_name} construído com sucesso")
         return modelo
-
 
     # TODO: Implementar, se necessário para implantação em smartphones:
     # - Pruning do modelo utilizando TensorFlow Model Optimization (TFMOT) para

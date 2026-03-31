@@ -3,14 +3,20 @@ from cnnClassifier.utils.logger import configure_logger
 
 logger = configure_logger(__name__)
 
+
 class ModelFactory:
     """
     Fábrica responsável por fornecer o backbone instanciado e as lógicas
     de pré-processamento exclusivas de cada arquitetura.
     """
-    
+
     @staticmethod
-    def get_pretrained_model(model_name: str, input_shape: tuple, include_top: bool = False, weights: str = "imagenet"):
+    def get_pretrained_model(
+        model_name: str,
+        input_shape: tuple,
+        include_top: bool = False,
+        weights: str = "imagenet",
+    ):
         models = {
             "mobilenetv3large": tf.keras.applications.MobileNetV3Large,
             "mobilenetv3small": tf.keras.applications.MobileNetV3Small,
@@ -39,13 +45,17 @@ class ModelFactory:
             for key, cls in models.items():
                 if key in model_name_lower or model_name_lower in key:
                     model_class = cls
-                    logger.info(f"🔍 Modelo encontrado por substring: '{key}' a partir de '{model_name}'")
+                    logger.info(
+                        f"🔍 Modelo encontrado por substring: '{key}' a partir de '{model_name}'"
+                    )
                     break
 
         if model_class is None:
-            logger.warning(f"⚠️ Modelo '{model_name}' não reconhecido na Factory. Usando MobileNetV3Large.")
-            model_class = tf.keras.applications.MobileNetV3Large
-            model_name_lower = "mobilenetv3large"
+            supported_models = ", ".join(sorted(models.keys()))
+            raise ValueError(
+                f"❌ Modelo '{model_name}' não é suportado!"
+                f"   Modelos disponíveis: {supported_models}"
+            )
 
         comuns_params = {
             "input_shape": input_shape,
@@ -58,19 +68,23 @@ class ModelFactory:
             comuns_params["pooling"] = None
 
         modelo_base_temp = model_class(**comuns_params)
-        logger.info(f"✅ Modelo base {model_class.__name__} carregado com sucesso pela Factory.")
+        logger.info(
+            f"✅ Modelo base {model_class.__name__} carregado com sucesso pela Factory."
+        )
 
         # O Truque Mágico pedido: forçar o nome do backbone
         try:
             # Ao reconstruir um container Model, forçamos que a camada no grafo final
             # receba obrigatoriamente e garantidamente a string name="core_backbone"
             modelo_base = tf.keras.Model(
-                inputs=modelo_base_temp.input, 
-                outputs=modelo_base_temp.output, 
-                name="core_backbone"
+                inputs=modelo_base_temp.input,
+                outputs=modelo_base_temp.output,
+                name="core_backbone",
             )
         except Exception as e:
-            logger.warning(f"⚠️ Renomeação estrutural falhou, usando fallback _name. Erro: {e}")
+            logger.warning(
+                f"⚠️ Renomeação estrutural falhou, usando fallback _name. Erro: {e}"
+            )
             modelo_base = modelo_base_temp
             modelo_base._name = "core_backbone"
 
@@ -98,8 +112,12 @@ class ModelFactory:
         preprocess_func = preprocess_input_dict.get(model_name_lower, None)
 
         if preprocess_func is not None:
-             logger.info(f"✅ Preprocessing nativo importado na Factory para {model_name_lower}")
+            logger.info(
+                f"✅ Preprocessing nativo importado na Factory para {model_name_lower}"
+            )
         else:
-             logger.info(f"✅ Modelo {model_name_lower} possui built-in preprocessing ou não requer.")
+            logger.info(
+                f"✅ Modelo {model_name_lower} possui built-in preprocessing ou não requer."
+            )
 
         return modelo_base, preprocess_func

@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def compression_block(filters, kernel_size=3, strides=1):
+def compression_block(filters, kernel_size=3, strides=1, l2_reg=0.01):
     return tf.keras.Sequential(
         [
             tf.keras.layers.DepthwiseConv2D(
@@ -12,7 +12,7 @@ def compression_block(filters, kernel_size=3, strides=1):
                 1,
                 padding="same",
                 activation="relu",
-                kernel_regularizer=tf.keras.regularizers.L2(0.01),
+                kernel_regularizer=tf.keras.regularizers.L2(l2_reg),
             ),
             tf.keras.layers.BatchNormalization(),
             tf.keras.layers.ReLU(),
