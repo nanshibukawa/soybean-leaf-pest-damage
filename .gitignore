@@ -53,3 +53,14 @@ logs/
 *.tmp
 *.temp
 *~
+
+*.md
+*.docx
+*.pdf
+*.db
+*.png
+*.drawio
+*.gitignore
+*.environments
+*.plantuml
+*.env
