@@ -34,16 +34,11 @@ class ModelTraining:
         try:
             logger.info("Iniciando preparação para Fine-Tuning...")
 
-            backbone = None
-            for layer in self.model.layers:
-                if "mobilenet" in layer.name.lower() or isinstance(
-                    layer, tf.keras.Model
-                ):
-                    backbone = layer
-                    break
-
-            if backbone is None:
-                raise Exception("Backbone não encontrado no modelo!")
+            try:
+                backbone = self.model.get_layer("core_backbone")
+                logger.info("🧠 Backbone 'core_backbone' encontrado com sucesso para treinamento.")
+            except ValueError:
+                raise Exception("Backbone não encontrado no modelo! Certifique-se de usar a ModelFactory.")
 
             # 2. Configurar o congelamento seletivo
             backbone.trainable = True

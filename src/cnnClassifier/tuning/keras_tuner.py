@@ -68,29 +68,12 @@ class KerasTunerSearch:
 
         # Descongelar últimas camadas do BACKBONE
         if unfreeze_last_n > 0:
-            backbone = None
-            # Procurar backbone pré-treinado (funciona com qualquer modelo)
-            backbone_keywords = [
-                "mobilenet",
-                "inception",
-                "vgg",
-                "nasnet",
-                "efficientnet",
-                "resnet",
-                "convnext",
-            ]
-
-            for layer in model.layers:
-                if isinstance(layer, tf.keras.Model):
-                    layer_name_lower = layer.name.lower()
-                    if any(
-                        keyword in layer_name_lower for keyword in backbone_keywords
-                    ):
-                        backbone = layer
-                        logger.info(
-                            f"🧠 Backbone encontrado: {layer.name} ({len(layer.layers)} camadas)"
-                        )
-                        break
+            try:
+                backbone = model.get_layer("core_backbone")
+                logger.info(f"🧠 Backbone 'core_backbone' encontrado ({len(backbone.layers)} camadas)")
+            except ValueError:
+                backbone = None
+                logger.warning("⚠️  Backbone 'core_backbone' não encontrado")
 
             if backbone is not None:
                 total_layers = len(backbone.layers)
@@ -287,26 +270,12 @@ class KerasTunerSearch:
         model = self.build_model(self.best_hp)
 
         # Descongelar últimas camadas do BACKBONE
-        backbone = None
-        backbone_keywords = [
-            "mobilenet",
-            "inception",
-            "vgg",
-            "nasnet",
-            "efficientnet",
-            "resnet",
-            "convnext",
-        ]
-
-        for layer in model.layers:
-            if isinstance(layer, tf.keras.Model):
-                layer_name_lower = layer.name.lower()
-                if any(keyword in layer_name_lower for keyword in backbone_keywords):
-                    backbone = layer
-                    logger.info(
-                        f"🧠 Backbone encontrado no retreino: {layer.name} ({len(layer.layers)} camadas)"
-                    )
-                    break
+        try:
+            backbone = model.get_layer("core_backbone")
+            logger.info(f"🧠 Backbone 'core_backbone' encontrado no retreino ({len(backbone.layers)} camadas)")
+        except ValueError:
+            backbone = None
+            logger.warning("⚠️  Backbone 'core_backbone' não encontrado no retreino")
 
         if backbone is not None:
             total_layers = len(backbone.layers)
