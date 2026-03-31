@@ -4,31 +4,23 @@ __pycache__/
 build/
 dist/
 wheels/
-*.egg-info
+*.egg-info/
 
 # Virtual environments
-.venv
-.vscode
+.venv/
 .env
+*.env
+*.environments
 
 # Jupyter notebooks 
 *.ipynb
-notebooks/*.ipynb
 
-# Data files
+# Data files & ML Artifacts
 data/raw/
 data/processed/
 artifacts/
 mlruns/
 streamlit/
-**/**.png
-**/**.jpeg
-**/**.md
-**/**.pdf
-**/**.docx
-**/**.db
-**/**.drawio
-**/**.plantuml
 
 # OS generated files
 .DS_Store
@@ -54,13 +46,15 @@ logs/
 *.temp
 *~
 
-*.md
-*.docx
+# Globally Ignored Extensions
 *.pdf
+*.docx
 *.db
 *.png
+*.jpeg
 *.drawio
-*.gitignore
-*.environments
 *.plantuml
-*.env
+
+# Ignore all markdown files, but EXCLUDE README.md so it is tracked
+*.md
+!README.md
