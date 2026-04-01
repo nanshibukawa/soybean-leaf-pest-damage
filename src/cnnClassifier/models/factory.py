@@ -1,3 +1,5 @@
+import keras_hub
+
 import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
 
@@ -40,23 +42,12 @@ class ModelFactory:
         model_name_lower = model_name.lower()
         model_class = models.get(model_name_lower)
 
-        # Fallback de busca por Substring
-        if model_class is None:
-            for key, cls in models.items():
-                if key in model_name_lower or model_name_lower in key:
-                    model_class = cls
-                    logger.info(
-                        f"🔍 Modelo encontrado por substring: '{key}' a partir de '{model_name}'"
-                    )
-                    break
-
         if model_class is None:
             supported_models = ", ".join(sorted(models.keys()))
             raise ValueError(
                 f"❌ Modelo '{model_name}' não é suportado!"
                 f"   Modelos disponíveis: {supported_models}"
             )
-
         comuns_params = {
             "input_shape": input_shape,
             "include_top": include_top,
@@ -72,7 +63,6 @@ class ModelFactory:
             f"✅ Modelo base {model_class.__name__} carregado com sucesso pela Factory."
         )
 
-        # O Truque Mágico pedido: forçar o nome do backbone
         try:
             # Ao reconstruir um container Model, forçamos que a camada no grafo final
             # receba obrigatoriamente e garantidamente a string name="core_backbone"
@@ -121,3 +111,20 @@ class ModelFactory:
             )
 
         return modelo_base, preprocess_func
+
+    @staticmethod
+    def get_vit_keras_hub(model_name: str, input_shape: tuple):
+
+        # O Keras Hub bate na porta da Hugging Face e baixa a arquitetura + pesos
+        backbone = keras_hub.models.ViTBackbone.from_preset(model_name)
+
+        inputs = tf.keras.Input(shape=input_shape)
+        outputs = backbone(inputs)
+
+        modelo_base = tf.keras.Model(
+            inputs=inputs, outputs=outputs, name="core_backbone"
+        )
+
+        # Retornamos (modelo, None) para manter a compatibilidade com a
+        # descompactação (unpacking) que ocorre lá no PrepareModel
+        return modelo_base, None

@@ -55,66 +55,11 @@ class PrepareModel:
         """Constrói modelo - custom, pré-treinado ou transformer baseado na configuração"""
         logger.info(f"🏗️ Construindo modelo {self.model_config.model_name}")
 
-        model_name = self.model_config.model_name.lower()
-        # Lógica para selecionar arquitetura
-        if any(t in model_name for t in ["vit", "mobilevit"]):
-            return self._build_transformer_model(model_name)
         use_pretrained = getattr(self.model_config, "use_pretrained", False)
         if use_pretrained:
             return self._build_pretrained_model()
         else:
             return self._build_custom_model()
-
-    def _build_transformer_model(self) -> tf.keras.Model:
-        # TODO: Implementar construção de modelos transformer (ViT, MobileViT, ViTImageClassifier)
-        """
-        Constrói e retorna um modelo Vision Transformer (ViT), MobileViT ou ViTImageClassifier.
-        Adapta o pipeline para transformers, incluindo data augmentation, pré-processamento e pooling adequados.
-        """
-
-        model_name = self.model_config.model_name.lower()
-        logger.info(f"🔬 Construindo modelo Transformer: {model_name}")
-
-        # Dicionário de modelos: cada função retorna um modelo Keras funcional
-        vit_models = {
-            # "mobilevit": create_mobilevit,
-            # "vit_small_ds": create_vit_classifier,
-        }
-        if model_name not in vit_models:
-            supported_models = ", ".join(sorted(vit_models.keys()))
-            raise ValueError(
-                f"❌ Modelo '{model_name}' não é suportado para transformer! "
-                f"Modelos disponíveis: {supported_models}"
-            )
-
-        # Input e data augmentation
-        inputs = tf.keras.layers.Input(shape=self.image_config.size_tuple)
-        x = self.data_augmentation(inputs)
-
-        # Se o modelo NÃO faz rescaling internamente, aplica aqui
-        # Exemplo: MobileViT precisa de Rescaling externo, ViT já faz internamente
-        if model_name == "mobilevit":
-            x = tf.keras.layers.Rescaling(1.0 / 255)(x)
-            logger.info("Rescaling externo aplicado para MobileViT")
-        else:
-            logger.info(
-                f"Modelo {model_name} faz preprocessing interno ou não requer rescaling externo"
-            )
-
-        # Chama a função do modelo, conectando o pipeline
-        if model_name == "mobilevit":
-            model_body = vit_models[model_name](
-                num_classes=self.model_config.num_classes
-            )
-        elif model_name == "vit_small_ds":
-            model_body = vit_models[model_name](vanilla=False)
-        else:
-            raise ValueError(f"Modelo {model_name} não suportado!")
-
-        outputs = model_body(x)
-        model = tf.keras.Model(inputs=inputs, outputs=outputs)
-        logger.info(f"✅ Modelo transformer {model_name} construído com sucesso!")
-        return model
 
     def _build_pretrained_model(self) -> tf.keras.Model:
         """
@@ -123,12 +68,26 @@ class PrepareModel:
         Returns:
             tf.keras.Model: Modelo compilado pronto para treinamento
         """
-        modelo_base, preprocess_layer = ModelFactory.get_pretrained_model(
-            model_name=self.model_config.model_name,
-            input_shape=self.image_config.size_tuple,
-            include_top=False,
-            weights=self.model_config.weights,
-        )
+        model_name = self.model_config.model_name.lower()
+
+        if "vit" in model_name:
+            if not self.model_config.preset_path:
+                raise ValueError(
+                    "⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos Keras Hub! "
+                    "Adicione-o no config do modelo (ex: preset_path: 'hf://google/vit-base-patch16-224')"
+                )
+
+            modelo_base, preprocess_layer = ModelFactory.get_vit_keras_hub(
+                model_name=self.model_config.preset_path,
+                input_shape=self.image_config.size_tuple,
+            )
+        else:
+            modelo_base, preprocess_layer = ModelFactory.get_pretrained_model(
+                model_name=model_name,
+                input_shape=self.image_config.size_tuple,
+                include_top=False,
+                weights=self.model_config.weights,
+            )
 
         l2_val = getattr(self.model_config, "l2_regularization", 0.01)
         logger.info(f"L2 regularization configurada: {l2_val}")
@@ -161,15 +120,24 @@ class PrepareModel:
         logger.info(f"🔒 Using Compression Blocks: {use_compression_blocks}")
         logger.info(f"🔒 Using Squeeze-and-Excitation (SE) Block: {use_se_block}")
 
-        # Blocos compressions e SE após o backbone (condicionais)
-        if use_compression_blocks:
-            x = compression_block(32, l2_reg=l2_val)(x)
-            if use_se_block:
+        # Blocos compressions e SE após o backbone (condicionais e apenas para tensores 4D / CNNs)
+        if len(x.shape) == 4:
+            if use_compression_blocks:
+                x = compression_block(32, l2_reg=l2_val)(x)
+                if use_se_block:
+                    x = se_block(x)
+                x = compression_block(64, l2_reg=l2_val)(x)
+            elif use_se_block:
                 x = se_block(x)
-            x = compression_block(64, l2_reg=l2_val)(x)
-        elif use_se_block:
-            x = se_block(x)
-        x = tf.keras.layers.GlobalAveragePooling2D()(x)
+
+            # Pooling espacial para CNNs
+            x = tf.keras.layers.GlobalAveragePooling2D()(x)
+
+        elif len(x.shape) == 3:
+            # Para Transformers, não podemos usar SE Blocks (pois eles usam convoluções 2D internamente).
+            # Fazemos o pooling temporal/sequencial diretamente.
+            x = tf.keras.layers.GlobalAveragePooling1D()(x)
+
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
         x = tf.keras.layers.Flatten()(x)
         x = tf.keras.layers.Dense(
