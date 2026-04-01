@@ -70,13 +70,24 @@ class PrepareModel:
         """
         model_name = self.model_config.model_name.lower()
 
-        if "vit" in model_name:
+        if "mobilevit" in model_name:
+            if not self.model_config.preset_path:
+                raise ValueError("⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos do Hugging Face!")
+            
+            # Encaminha o MobileViT diretamente para a Rota do pacote `transformers`
+            modelo_base, preprocess_layer = ModelFactory.get_mobilevit(
+                preset_path=self.model_config.preset_path,
+                input_shape=self.image_config.size_tuple,
+            )
+            
+        elif "keras_hub" in model_name:
             if not self.model_config.preset_path:
                 raise ValueError(
                     "⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos Keras Hub! "
-                    "Adicione-o no config do modelo (ex: preset_path: 'hf://google/vit-base-patch16-224')"
+                    "Adicione-o no config do modelo (ex: preset_path: 'vit_base_patch16_224_imagenet')"
                 )
 
+            # Encaminha o ViT puro para a Rota do Keras Hub
             modelo_base, preprocess_layer = ModelFactory.get_vit_keras_hub(
                 model_name=self.model_config.preset_path,
                 input_shape=self.image_config.size_tuple,
