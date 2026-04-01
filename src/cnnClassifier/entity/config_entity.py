@@ -48,6 +48,7 @@ class ModelConfig(BaseModel):
     # Model architecture
     model_name: str = Field(..., description="Nome do modelo CNN")
     weights: str = Field(..., description="Pesos pré-treinados")
+    preset_path: Optional[str] = Field(default=None, description="Caminho ou identificador do preset no Keras Hub/Hugging Face")
     include_top: bool = Field(..., description="Incluir camadas de classificação")
 
     # Image configuration
@@ -211,6 +212,7 @@ class ModelConfig(BaseModel):
                 # Model
                 model_name=config["model"]["name"],
                 weights=config["model"]["weights"],
+                preset_path=config["model"].get("preset_path", None),
                 include_top=config["model"]["include_top"],
                 # Image
                 image_size=config["image"]["size"],
