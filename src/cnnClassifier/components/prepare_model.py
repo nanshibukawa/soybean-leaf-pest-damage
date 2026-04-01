@@ -61,7 +61,6 @@ class PrepareModel:
         else:
             return self._build_custom_model()
 
-
     def _build_pretrained_model(self) -> tf.keras.Model:
         """
         Constrói e retorna um modelo Keras pré-treinado para classificação de imagens.
@@ -71,16 +70,16 @@ class PrepareModel:
         """
         model_name = self.model_config.model_name.lower()
 
-        if "vit" in model_name.lowe():
+        if "vit" in model_name:
             if not self.model_config.preset_path:
                 raise ValueError(
-                    f"⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos Keras Hub! "
-                    f"Adicione-o no config do modelo (ex: preset_path: 'hf://google/vit-base-patch16-224')"
+                    "⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos Keras Hub! "
+                    "Adicione-o no config do modelo (ex: preset_path: 'hf://google/vit-base-patch16-224')"
                 )
-            
+
             modelo_base, preprocess_layer = ModelFactory.get_vit_keras_hub(
                 model_name=self.model_config.preset_path,
-                input_shape=self.image_config.size_tuple
+                input_shape=self.image_config.size_tuple,
             )
         else:
             modelo_base, preprocess_layer = ModelFactory.get_pretrained_model(
@@ -130,15 +129,14 @@ class PrepareModel:
                 x = compression_block(64, l2_reg=l2_val)(x)
             elif use_se_block:
                 x = se_block(x)
-            
+
             # Pooling espacial para CNNs
             x = tf.keras.layers.GlobalAveragePooling2D()(x)
 
         elif len(x.shape) == 3:
-            # Para Transformers, não podemos usar SE Blocks (pois eles usam convoluções 2D internamente). 
+            # Para Transformers, não podemos usar SE Blocks (pois eles usam convoluções 2D internamente).
             # Fazemos o pooling temporal/sequencial diretamente.
             x = tf.keras.layers.GlobalAveragePooling1D()(x)
-
 
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
         x = tf.keras.layers.Flatten()(x)

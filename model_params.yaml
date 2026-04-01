@@ -407,7 +407,7 @@ tuning:
         step: 4
         default: 64
 
-    vit_kerashub:
+    vit_base_patch16_224_imagenet:
       learning_rate:
         min_value: 1e-6
         max_value: 1e-4
@@ -429,7 +429,27 @@ tuning:
         step: 4
         default: 12
 
-
+    mobilevit-small:
+      learning_rate:
+        min_value: 1e-6
+        max_value: 1e-4
+        sampling: "log"
+        default: 5e-5
+      dropout_rate:
+        min_value: 0.1
+        max_value: 0.4
+        step: 0.1
+        default: 0.2
+      l2_regularization:
+        min_value: 1e-5
+        max_value: 1e-3
+        sampling: "log"
+        default: 1e-4
+      unfreeze_last_n_layers:
+        min_value: 0
+        max_value: 24
+        step: 4
+        default: 12
 
 
 
@@ -896,6 +916,32 @@ experiments:
         2: 3.5
     optimizer:
       learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
+
+  # ---------------------------------------------------------------------------
+  # ViT (Vision Transformer) + CNN - MobileViT Small via Keras Hub (hf://)
+  # ---------------------------------------------------------------------------
+  mobilevit-small:
+    model:
+      name: "mobilevit-small"
+      preset_path: "hf://apple/mobilevit-small" # Aqui você pode trocar para "hf://google/mobilevit-small" etc
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+    image:
+      size: [224, 224, 3] # Transformers (Base Patch 16) exigem resolução alinhada (224x224)
+    training:
+      batch_size: 16
+      epochs: 50
+      dropout_rate: 0.3
+      class_weights:
+        0: 0.7
+        1: 1.0
+        2: 3.5
+    optimizer:
+      learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
+
+
 
 # =============================================================================
 # TUNING RESULTS - Melhores hiperparâmetros encontrados
