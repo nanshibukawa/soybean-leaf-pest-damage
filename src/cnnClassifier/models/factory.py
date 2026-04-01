@@ -1,4 +1,5 @@
 import keras_hub
+from cnnClassifier.models.mobilevit import create_mobilevit
 
 import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
@@ -110,7 +111,7 @@ class ModelFactory:
                 f"✅ Modelo {model_name_lower} possui built-in preprocessing ou não requer."
             )
 
-        return modelo_base, preprocess_func
+        return modelo_base, preprocess_func 
 
     @staticmethod
     def get_vit_keras_hub(model_name: str, input_shape: tuple):
@@ -127,4 +128,10 @@ class ModelFactory:
 
         # Retornamos (modelo, None) para manter a compatibilidade com a
         # descompactação (unpacking) que ocorre lá no PrepareModel
+        return modelo_base, None
+
+    @staticmethod
+    def get_mobilevit(preset_path: str, input_shape: tuple):        
+        modelo_base = create_mobilevit(input_shape=input_shape)
+
         return modelo_base, None
