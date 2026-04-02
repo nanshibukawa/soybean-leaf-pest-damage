@@ -111,7 +111,7 @@ class ModelFactory:
                 f"✅ Modelo {model_name_lower} possui built-in preprocessing ou não requer."
             )
 
-        return modelo_base, preprocess_func 
+        return modelo_base, preprocess_func
 
     @staticmethod
     def get_vit_keras_hub(model_name: str, input_shape: tuple):
@@ -131,7 +131,7 @@ class ModelFactory:
         return modelo_base, None
 
     @staticmethod
-    def get_mobilevit(preset_path: str, input_shape: tuple):        
+    def get_mobilevit(input_shape: tuple):
         modelo_base = create_mobilevit(input_shape=input_shape)
-
+        logger.info("✅ MobileViT criado com sucesso pela Factory.")
         return modelo_base, None

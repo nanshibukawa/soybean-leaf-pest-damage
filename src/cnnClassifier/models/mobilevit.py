@@ -60,6 +60,7 @@ presented in the figure below (taken from the
 ![](https://i.imgur.com/mANnhI7.png)
 """
 
+
 def conv_block(x, filters=16, kernel_size=3, strides=2):
     conv_layer = layers.Conv2D(
         filters,
@@ -127,6 +128,7 @@ def mlp(x, hidden_units, dropout_rate):
         x = layers.Dropout(dropout_rate)(x)
     return x
 
+
 def transformer_block(x, transformer_layers, projection_dim, num_heads=2):
     for _ in range(transformer_layers):
         # Layer normalization 1.
@@ -149,6 +151,7 @@ def transformer_block(x, transformer_layers, projection_dim, num_heads=2):
         x = layers.Add()([x3, x2])
 
     return x
+
 
 def mobilevit_block(x, num_blocks, projection_dim, strides=1):
     # Local projection with convolutions.
@@ -184,6 +187,7 @@ def mobilevit_block(x, num_blocks, projection_dim, strides=1):
 
     return local_global_features
 
+
 """**More on the MobileViT block**:
 
 * First, the feature representations (A) go through convolution blocks that capture local
@@ -210,10 +214,10 @@ representation of the architecture:
 """
 
 
-def create_mobilevit(input_shape=(224, 224, 3)):
+def create_mobilevit(input_shape: tuple):
     inputs = keras.Input(input_shape)
     x = layers.Rescaling(scale=1.0 / 255)(inputs)
-    
+
     # Initial conv-stem -> MV2 block.
     x = conv_block(x, filters=16)
     x = inverted_residual_block(
@@ -256,8 +260,6 @@ def create_mobilevit(input_shape=(224, 224, 3)):
     # outputs = layers.Dense(num_classes, activation="softmax")(x)
 
     return keras.Model(inputs, x, name="core_backbone")
-
-
 
 
 #     # Classification head.
