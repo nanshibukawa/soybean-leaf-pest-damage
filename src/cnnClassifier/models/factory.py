@@ -1,4 +1,5 @@
 import keras_hub
+from cnnClassifier.models.mobilevit import create_mobilevit
 
 import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
@@ -127,4 +128,10 @@ class ModelFactory:
 
         # Retornamos (modelo, None) para manter a compatibilidade com a
         # descompactação (unpacking) que ocorre lá no PrepareModel
+        return modelo_base, None
+
+    @staticmethod
+    def get_mobilevit(input_shape: tuple):
+        modelo_base = create_mobilevit(input_shape=input_shape)
+        logger.info("✅ MobileViT criado com sucesso pela Factory.")
         return modelo_base, None
