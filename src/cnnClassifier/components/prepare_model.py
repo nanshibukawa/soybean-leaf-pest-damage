@@ -1,8 +1,9 @@
-from typing import Optional
+import os
+
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import tensorflow as tf
 
-# from cnnClassifier.models.mobilevit import create_mobilevit
-# from cnnClassifier.models.vit_small_ds import create_vit_classifier
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ModelConfig, ImageConfig
 from cnnClassifier.models.custom_blocks import compression_block, se_block
@@ -70,13 +71,20 @@ class PrepareModel:
         """
         model_name = self.model_config.model_name.lower()
 
-        if "vit" in model_name:
+        if "mobilevit" in model_name:
+            # Encaminha o MobileViT diretamente para a Rota do pacote `transformers`
+            modelo_base, preprocess_layer = ModelFactory.get_mobilevit(
+                input_shape=self.image_config.size_tuple,
+            )
+
+        elif "keras_hub" in model_name:
             if not self.model_config.preset_path:
                 raise ValueError(
                     "⚠️ O parâmetro 'preset_path' é obrigatório no YAML para modelos Keras Hub! "
-                    "Adicione-o no config do modelo (ex: preset_path: 'hf://google/vit-base-patch16-224')"
+                    "Adicione-o no config do modelo (ex: preset_path: 'vit_base_patch16_224_imagenet')"
                 )
 
+            # Encaminha o ViT puro para a Rota do Keras Hub
             modelo_base, preprocess_layer = ModelFactory.get_vit_keras_hub(
                 model_name=self.model_config.preset_path,
                 input_shape=self.image_config.size_tuple,
