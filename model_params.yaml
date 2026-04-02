@@ -944,13 +944,12 @@ experiments:
   mobilevit-small:
     model:
       name: "mobilevit-small"
-      preset_path: "hf://apple/mobilevit-small" # Aqui você pode trocar para "hf://google/mobilevit-small" etc
       use_pretrained: true
       weights: "imagenet"
       use_compression_blocks: false
       use_se_block: false
     image:
-      size: [256, 256, 3] # Transformers (Base Patch 16) exigem resolução alinhada (224x224)
+      size: [256, 256, 3] 
     training:
       batch_size: 16
       epochs: 50
