@@ -1,5 +1,6 @@
 import keras_hub
 from cnnClassifier.models.mobilevit import create_mobilevit
+from cnnClassifier.models.mobilevit_v2 import create_mobilevit_custom
 
 import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
@@ -131,7 +132,11 @@ class ModelFactory:
         return modelo_base, None
 
     @staticmethod
-    def get_mobilevit(input_shape: tuple):
-        modelo_base = create_mobilevit(input_shape=input_shape)
-        logger.info("✅ MobileViT criado com sucesso pela Factory.")
+    def get_mobilevit(model_name: str, input_shape: tuple):
+        if "custom" in model_name.lower() or "v2" in model_name.lower() or "se" in model_name.lower():
+            modelo_base = create_mobilevit_custom(input_shape=input_shape)
+            logger.info(f"✅ MobileViT Custom ({model_name}) criado com sucesso pela Factory.")
+        else:
+            modelo_base = create_mobilevit(input_shape=input_shape)
+            logger.info("✅ MobileViT (Padrão) criado com sucesso pela Factory.")
         return modelo_base, None
