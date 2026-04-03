@@ -36,25 +36,41 @@ class ModelTraining:
 
             try:
                 backbone = self.model.get_layer("core_backbone")
-                logger.info("🧠 Backbone 'core_backbone' encontrado com sucesso para treinamento.")
+                logger.info(
+                    "🧠 Backbone 'core_backbone' encontrado com sucesso para treinamento."
+                )
             except ValueError:
-                raise Exception("Backbone não encontrado no modelo! Certifique-se de usar a ModelFactory.")
+                raise Exception(
+                    "Backbone não encontrado no modelo! Certifique-se de usar a ModelFactory."
+                )
 
             # 2. Configurar o congelamento seletivo
             backbone.trainable = True
             total_layers = len(backbone.layers)
-            layers_to_unfreeze = min(
-                self.model_config.unfreeze_last_n_layers, total_layers
-            )
-            # Congela as iniciais, libera as últimas
-            for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                layer.trainable = False
-            for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                layer.trainable = True
 
-            logger.info(
-                f"🔓 Fine-tuning: {layers_to_unfreeze} camadas liberadas de {total_layers}."
+            is_mobilevit_from_scratch = (
+                "mobilevit" in self.model_config.model_name.lower()
             )
+
+            if is_mobilevit_from_scratch:
+                logger.info(
+                    f"🔓 MobileViT detectado: Treinamento from scratch. Mantendo todas {total_layers} camadas aprendendo (trainable=True)."
+                )
+            else:
+                layers_to_unfreeze = min(
+                    self.model_config.unfreeze_last_n_layers, total_layers
+                )
+                # Congela as iniciais, libera as últimas
+                for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
+                    layer.trainable = False
+                for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
+                    if not isinstance(layer, tf.keras.BatchNormalization):
+                        layer.trainable = True
+                    else:
+                        layer.trainable = False
+                logger.info(
+                    f"🔓 Fine-tuning: {layers_to_unfreeze} camadas liberadas de {total_layers}."
+                )
 
             self._compile_model()
 

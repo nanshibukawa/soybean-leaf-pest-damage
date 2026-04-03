@@ -74,6 +74,7 @@ class PrepareModel:
         if "mobilevit" in model_name:
             # Encaminha o MobileViT diretamente para a Rota do pacote `transformers`
             modelo_base, preprocess_layer = ModelFactory.get_mobilevit(
+                model_name=model_name,
                 input_shape=self.image_config.size_tuple,
             )
 
@@ -115,10 +116,16 @@ class PrepareModel:
         # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
         # Referência: https://keras.io/guides/transfer_learning/
 
-        modelo_base.trainable = False
-        logger.info(f"🔒 Modelo base congelado: {len(modelo_base.layers)} camadas")
+        is_mobilevit_from_scratch = "mobilevit" in model_name
 
-        x = modelo_base(x, training=False)
+        if is_mobilevit_from_scratch:
+            logger.info("🔓 MobileViT identificado: inicializado do zero. Não congelar e manter BatchNormalization ativa.")
+            modelo_base.trainable = True
+            x = modelo_base(x)
+        else:
+            modelo_base.trainable = False
+            logger.info(f"🔒 Modelo base congelado: {len(modelo_base.layers)} camadas")
+            x = modelo_base(x, training=False)
 
         use_compression_blocks = getattr(
             self.model_config, "use_compression_blocks", False
