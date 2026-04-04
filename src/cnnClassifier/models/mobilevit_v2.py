@@ -34,10 +34,13 @@ Note: This example should be run with Tensorflow 2.13 and higher.
 ## Imports
 """
 
+import os
 import tensorflow as tf
 import keras
 from keras import layers
 from keras import backend
+
+from cnnClassifier.models.custom_blocks import compression_block, se_block
 
 # Hyperparameters
 patch_size = 4  # 2x2, for the Transformer blocks.
@@ -108,6 +111,7 @@ def inverted_residual_block(x, expanded_channels, output_channels, strides=1):
     )(m)
     m = layers.BatchNormalization()(m)
     m = keras.activations.swish(m)
+    m = se_block(m)
 
     m = layers.Conv2D(output_channels, 1, padding="same", use_bias=False)(m)
     m = layers.BatchNormalization()(m)
@@ -179,11 +183,11 @@ def mobilevit_block(x, num_blocks, projection_dim, strides=1):
     )
     local_global_features = layers.Concatenate(axis=-1)([x, folded_feature_map])
 
-    # Fuse the local and global features using a convoluion layer.
+    # Fuse the local and global features using a convolution layer.
     local_global_features = conv_block(
         local_global_features, filters=projection_dim, strides=strides
     )
-
+    local_global_features = se_block(local_global_features)
     return local_global_features
 
 
@@ -194,7 +198,7 @@ relationships. The expected shape of a single entry here would be `(h, w, num_ch
 * Then they get unfolded into another vector with shape `(p, n, num_channels)`,
 where `p` is the area of a small patch, and `n` is `(h * w) / p`. So, we end up with `n`
 non-overlapping patches.
-* This unfolded vector is then passed through a Tranformer block that captures global
+* This unfolded vector is then passed through a Transformer block that captures global
 relationships between the patches.
 * The output vector (B) is again folded into a vector of shape `(h, w, num_channels)`
 resembling a feature map coming out of convolutions.
@@ -213,7 +217,7 @@ representation of the architecture:
 """
 
 
-def create_mobilevit(input_shape: tuple):
+def create_mobilevit_custom(input_shape: tuple):
     inputs = keras.Input(input_shape)
     x = layers.Rescaling(scale=1.0 / 255)(inputs)
 
@@ -251,7 +255,9 @@ def create_mobilevit(input_shape: tuple):
         x, expanded_channels=80 * expansion_factor, output_channels=80, strides=2
     )
     x = mobilevit_block(x, num_blocks=3, projection_dim=96)
-    x = conv_block(x, filters=320, kernel_size=1, strides=1)
+    x = compression_block(filters=320)(x)
+
+    # x = conv_block(x, filters=320, kernel_size=1, strides=1)
 
     # Nós NÃO queremos a cabeça de classificação, queremos o core_backbone
     # para usar de entrada no Transfer Learning!
