@@ -47,13 +47,16 @@ class KerasTunerSearch:
 
         dropout_range = search_space.get("dropout_rate")
 
-        unfreeze_range = search_space.get("unfreeze_last_n_layers")
-
+        # Torna unfreeze_last_n_layers opcional
+        unfreeze_range = search_space.get("unfreeze_last_n_layers", None)
         l2_range = search_space.get("l2_regularization")
 
         hp_learning_rate = hp.Float("learning_rate", **lr_range)
         dropout_rate = hp.Float("dropout_rate", **dropout_range)
-        unfreeze_last_n = hp.Int("unfreeze_last_n_layers", **unfreeze_range)
+        if unfreeze_range is not None:
+            unfreeze_last_n = hp.Int("unfreeze_last_n_layers", **unfreeze_range)
+        else:
+            unfreeze_last_n = 0
         l2_reg = hp.Float("l2_regularization", **l2_range)
 
         logger.info(
@@ -67,10 +70,12 @@ class KerasTunerSearch:
         model = prepare_model.build_model()
 
         # Descongelar últimas camadas do BACKBONE
-        if unfreeze_last_n > 0:
+        if unfreeze_last_n and unfreeze_last_n > 0:
             try:
                 backbone = model.get_layer("core_backbone")
-                logger.info(f"🧠 Backbone 'core_backbone' encontrado ({len(backbone.layers)} camadas)")
+                logger.info(
+                    f"🧠 Backbone 'core_backbone' encontrado ({len(backbone.layers)} camadas)"
+                )
             except ValueError:
                 backbone = None
                 logger.warning("⚠️  Backbone 'core_backbone' não encontrado")
@@ -132,11 +137,16 @@ class KerasTunerSearch:
                 )
                 # Fallback: unfreeze últimas camadas treináveis do modelo
                 trainable_layers = [l for l in model.layers if l.trainable]
-                for layer in trainable_layers[-unfreeze_last_n:]:
-                    layer.trainable = True
-                logger.info(
-                    f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas"
-                )
+                if unfreeze_last_n > 0:
+                    for layer in trainable_layers[-unfreeze_last_n:]:
+                        layer.trainable = True
+                    logger.info(
+                        f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas"
+                    )
+                else:
+                    logger.info(
+                        "🔄 Fallback: nenhuma camada liberada (unfreeze_last_n_layers=0)"
+                    )
 
         # Compilar usando mesmas definições do pipeline principal
         # TODO: implementar função com outros otimizadores, e chamar a função
@@ -272,7 +282,9 @@ class KerasTunerSearch:
         # Descongelar últimas camadas do BACKBONE
         try:
             backbone = model.get_layer("core_backbone")
-            logger.info(f"🧠 Backbone 'core_backbone' encontrado no retreino ({len(backbone.layers)} camadas)")
+            logger.info(
+                f"🧠 Backbone 'core_backbone' encontrado no retreino ({len(backbone.layers)} camadas)"
+            )
         except ValueError:
             backbone = None
             logger.warning("⚠️  Backbone 'core_backbone' não encontrado no retreino")
