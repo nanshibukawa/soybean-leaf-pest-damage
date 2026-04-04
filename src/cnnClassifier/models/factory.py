@@ -133,9 +133,11 @@ class ModelFactory:
 
     @staticmethod
     def get_mobilevit(model_name: str, input_shape: tuple):
-        if "custom" in model_name.lower() or "v2" in model_name.lower() or "se" in model_name.lower():
+        if model_name.lower() == "mobilevit-custom":
             modelo_base = create_mobilevit_custom(input_shape=input_shape)
-            logger.info(f"✅ MobileViT Custom ({model_name}) criado com sucesso pela Factory.")
+            logger.info(
+                f"✅ MobileViT Custom ({model_name}) criado com sucesso pela Factory."
+            )
         else:
             modelo_base = create_mobilevit(input_shape=input_shape)
             logger.info("✅ MobileViT (Padrão) criado com sucesso pela Factory.")

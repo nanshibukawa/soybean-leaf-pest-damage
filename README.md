@@ -4,16 +4,19 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 
 ## 📋 Descrição
 
-Este projeto implementa um sistema de classificação de imagens para identificar danos causados por pragas em folhas de soja, utilizando redes neurais convolucionais (CNN) com TensorFlow/Keras.
+Este projeto implementa um sistema de classificação de imagens para identificar danos causados por pragas em folhas de soja, utilizando redes neurais convolucionais (CNN) e arquiteturas modernas baseadas em Transformers (MobileViT, ViT) com TensorFlow/Keras.
 
 ## 🚀 Tecnologias
 
 - Python 3.12+
 - TensorFlow 2.17.1
-- Keras
+- Keras (incluindo Keras 3)
+- Keras Tuner
+- MLflow e DagsHub (Rastreamento de Experimentos)
 - scikit-learn
 - Pandas, NumPy
 - Matplotlib, Seaborn
+- MobileViT, Vision Transformer (ViT)
 
 ## 📦 Instalação
 
@@ -35,12 +38,13 @@ pip install .[image-processing]
 ## 🏗️ Estrutura do Projeto
 
 ```
-├── src/cnnClassifier/     # Código fonte principal
-│   ├── components/        # Componentes do pipeline
-│   ├── config/           # Configurações
-│   ├── entity/           # Entidades e modelos
-│   ├── pipeline/         # Pipelines de treinamento e predição
-│   └── utils/            # Funções utilitárias
+├── src/cnnClassifier/           # Código fonte principal
+│   ├── components/              # Componentes do pipeline
+│   ├── config/                  # Configurações
+│   ├── entity/                  # Entidades e modelos
+│   ├── models/                  # Arquiteturas (inclui MobileViT, ViT, etc)
+│   ├── pipeline/                # Pipelines de treinamento e predição
+│   └── utils/                   # Funções utilitárias
 ├── notebooks/            # Jupyter notebooks para análise
 ├── scripts/              # Scripts de execução
 ├── artifacts/            # Artefatos gerados (modelos, dados)
@@ -102,7 +106,7 @@ python scripts/main_tuning.py --experiment efficientnetv2b3
 python scripts/main_tuning.py --experiment convnexttiny
 
 # ConvNeXtSmall 
-python scripts/main_tuning.py --experiment convneXtsmall
+python scripts/main_tuning.py --experiment convnextsmall
 
 # NASNet Mobile (AutoML, mobile-friendly)
 python scripts/main_tuning.py --experiment nasnetmobile
@@ -112,6 +116,15 @@ python scripts/main_tuning.py --experiment nasnetlarge
 
 # MobileNet com compression blocks + SE
 python scripts/main_tuning.py --experiment mobilenet_advanced
+ 
+# MobileViT (Transformer para mobile, eficiente e moderno)
+python scripts/main_tuning.py --experiment mobilevit-small
+
+# MobileViT Customizado (versão aprimorada)
+python scripts/main_tuning.py --experiment mobilevit-custom
+
+# Vision Transformer (ViT) para datasets pequenos
+python scripts/main_tuning.py --experiment vit_small_ds_v2
 ```
 
 **Ajustar parâmetros de busca:**

@@ -48,13 +48,15 @@ class ModelTraining:
             backbone.trainable = True
             total_layers = len(backbone.layers)
 
-            is_mobilevit_from_scratch = (
-                "mobilevit" in self.model_config.model_name.lower()
+            is_from_scratch = (
+                not self.model_config.weights
+                or str(self.model_config.weights).lower() == "none"
             )
 
-            if is_mobilevit_from_scratch:
+            if is_from_scratch:
                 logger.info(
-                    f"🔓 MobileViT detectado: Treinamento from scratch. Mantendo todas {total_layers} camadas aprendendo (trainable=True)."
+                    f"🔓 Treinamento from scratch detectado (sem pesos pré-treinados). "
+                    f"Mantendo todas as {total_layers} camadas aprendendo (trainable=True)."
                 )
             else:
                 layers_to_unfreeze = min(

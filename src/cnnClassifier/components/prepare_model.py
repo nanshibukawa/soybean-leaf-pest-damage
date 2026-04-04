@@ -116,10 +116,15 @@ class PrepareModel:
         # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
         # Referência: https://keras.io/guides/transfer_learning/
 
-        is_mobilevit_from_scratch = "mobilevit" in model_name
+        is_from_scratch = (
+            not self.model_config.weights
+            or str(self.model_config.weights).lower() == "none"
+        )
 
-        if is_mobilevit_from_scratch:
-            logger.info("🔓 MobileViT identificado: inicializado do zero. Não congelar e manter BatchNormalization ativa.")
+        if is_from_scratch:
+            logger.info(
+                f"🔓 Modelo {self.model_config.model_name} configurado sem pesos pré-treinados. Inicializado do zero (trainable=True)."
+            )
             modelo_base.trainable = True
             x = modelo_base(x)
         else:

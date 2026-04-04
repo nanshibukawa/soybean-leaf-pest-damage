@@ -34,7 +34,6 @@ Note: This example should be run with Tensorflow 2.13 and higher.
 ## Imports
 """
 
-import os
 import tensorflow as tf
 import keras
 from keras import layers

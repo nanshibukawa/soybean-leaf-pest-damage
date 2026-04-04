@@ -46,9 +46,14 @@ class ModelConfig(BaseModel):
     # Global
     random_seed: int
     # Model architecture
-    model_name: str = Field(..., description="Nome do modelo (CNN ou preset/transformer")
-    weights: str = Field(..., description="Pesos pré-treinados")
-    preset_path: Optional[str] = Field(default=None, description="Caminho ou identificador do preset no Keras Hub/Hugging Face")
+    model_name: str = Field(
+        ..., description="Nome do modelo (CNN ou preset/transformer"
+    )
+    weights: Optional[str] = Field(default=None, description="Pesos pré-treinados")
+    preset_path: Optional[str] = Field(
+        default=None,
+        description="Caminho ou identificador do preset no Keras Hub/Hugging Face",
+    )
     include_top: bool = Field(..., description="Incluir camadas de classificação")
 
     # Image configuration
@@ -194,7 +199,7 @@ class ModelConfig(BaseModel):
                     f"❌ Experimento '{experiment}' não encontrado no YAML!\n"
                     f"   Experimentos disponíveis: {available_list}"
                 )
-            
+
             exp_config = available_experiments[experiment]
             for section, values in exp_config.items():
                 if section in config:
