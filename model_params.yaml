@@ -445,11 +445,6 @@ tuning:
         max_value: 1e-3
         sampling: "log"
         default: 1e-4
-      unfreeze_last_n_layers:
-        min_value: 0
-        max_value: 24
-        step: 4
-        default: 12
 
     mobilevit-custom:
       learning_rate:
@@ -467,11 +462,6 @@ tuning:
         max_value: 1e-3
         sampling: "log"
         default: 1e-4
-      unfreeze_last_n_layers:
-        min_value: 0
-        max_value: 24
-        step: 4
-        default: 12
 
     vit_small_ds_v2:
       learning_rate:
@@ -967,7 +957,7 @@ experiments:
     model:
       name: "mobilevit-small"
       use_pretrained: true
-      weights: "imagenet"
+      weights: null
       use_compression_blocks: false
       use_se_block: false
     image:
@@ -988,7 +978,7 @@ experiments:
     model:
       name: "mobilevit-custom"
       use_pretrained: true
-      weights: "imagenet"
+      weights: null
       use_compression_blocks: false
       use_se_block: false
     image:
