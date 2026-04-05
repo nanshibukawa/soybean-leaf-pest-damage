@@ -222,9 +222,12 @@ class KerasTunerSearch:
         logger.info("Melhores Hiperparâmetros:")
         logger.info(f"   Learning Rate:       {self.best_hp.get('learning_rate'):.6f}")
         logger.info(f"   Dropout Rate:        {self.best_hp.get('dropout_rate'):.2f}")
+
+        unfreeze_val = self.best_hp.values.get("unfreeze_last_n_layers")
         logger.info(
-            f"   Unfreeze Last N:     {self.best_hp.get('unfreeze_last_n_layers')}"
+            f"   Unfreeze Last N:     {unfreeze_val if unfreeze_val is not None else 'N/A (from scratch)'}"
         )
+
         if "l2_regularization" in self.best_hp.values:
             logger.info(
                 f"   L2 Regularization:   {self.best_hp.get('l2_regularization'):.6f}"
@@ -291,21 +294,33 @@ class KerasTunerSearch:
 
         if backbone is not None:
             total_layers = len(backbone.layers)
-            layers_to_unfreeze = min(
-                self.best_hp.values.get("unfreeze_last_n_layers", 20),
-                total_layers,
+
+            is_from_scratch = (
+                not self.model_config.weights
+                or str(self.model_config.weights).lower() == "none"
             )
-            for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                layer.trainable = False
-            for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
-                if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                    layer.trainable = True
-                else:
+
+            if is_from_scratch:
+                logger.info(
+                    f"🔓 Retreino from scratch detectado. Mantendo todas as {total_layers} camadas aprendendo (trainable=True)."
+                )
+                backbone.trainable = True
+            else:
+                layers_to_unfreeze = min(
+                    self.best_hp.values.get("unfreeze_last_n_layers", total_layers),
+                    total_layers,
+                )
+                for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
                     layer.trainable = False
-            logger.info(
-                f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
-            )
+                for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
+                    # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
+                    if not isinstance(layer, tf.keras.layers.BatchNormalization):
+                        layer.trainable = True
+                    else:
+                        layer.trainable = False
+                logger.info(
+                    f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
+                )
         else:
             logger.warning(
                 "⚠️  Backbone pré-treinado não encontrado no retreino - usando fallback"
@@ -439,8 +454,12 @@ class KerasTunerSearch:
         best_params = {
             "learning_rate": float(self.best_hp.get("learning_rate")),
             "dropout_rate": float(self.best_hp.get("dropout_rate")),
-            "unfreeze_last_n_layers": int(self.best_hp.get("unfreeze_last_n_layers")),
         }
+
+        if "unfreeze_last_n_layers" in self.best_hp.values:
+            best_params["unfreeze_last_n_layers"] = int(
+                self.best_hp.get("unfreeze_last_n_layers")
+            )
 
         # Adicionar L2 se existir (compatibilidade com buscas antigas)
         if "l2_regularization" in self.best_hp.values:

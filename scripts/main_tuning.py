@@ -350,12 +350,17 @@ def main(
                     logger.warning(f"⚠️ Falha ao logar curvas por época no run pai: {e}")
 
             if tuner.best_hp:
-                mlflow.log_param("best_lr", tuner.best_hp.get("learning_rate"))
-                mlflow.log_param("best_dropout", tuner.best_hp.get("dropout_rate"))
+                mlflow.log_param("best_lr", tuner.best_hp.values.get("learning_rate"))
                 mlflow.log_param(
-                    "best_unfreeze", tuner.best_hp.get("unfreeze_last_n_layers")
+                    "best_dropout", tuner.best_hp.values.get("dropout_rate")
                 )
-                mlflow.log_param("best_l2", tuner.best_hp.get("l2_regularization"))
+                mlflow.log_param(
+                    "best_unfreeze",
+                    tuner.best_hp.values.get("unfreeze_last_n_layers", "N/A"),
+                )
+                mlflow.log_param(
+                    "best_l2", tuner.best_hp.values.get("l2_regularization", "N/A")
+                )
 
             # ===== STAGE 5: Model Evaluation =====
             logger.info("\n🔄 === Stage 5: Model Evaluation (Detalhada) ===")
