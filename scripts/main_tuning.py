@@ -84,6 +84,15 @@ def main(
     logger.info("🚀 PIPELINE DE TUNING - Keras Tuner com Bayesian Optimization")
     logger.info("=" * 80)
 
+    gpus = tf.config.list_physical_devices("GPU")
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logger.info("✅ GPU Memory Growth ativado")
+        except RuntimeError as e:
+            logger.warning(f"⚠️ Erro ao configurar Memory Growth: {e}")
+
     try:
 
         # ===== STAGE 0: Load Configs =====
@@ -268,7 +277,7 @@ def main(
 
             # Inicializar tuner
             logger.info("🔧 Inicializando Keras Tuner...")
-            tuner = KerasTunerSearch(model_config, data_splitter)
+            tuner = KerasTunerSearch(model_config, data_splitter, image_config)
 
             if mode == "tune":
                 # 4a) Busca de hiperparâmetros
