@@ -1,23 +1,33 @@
-import keras_tuner as kt
-import tensorflow as tf
+import json
 import random
 from pathlib import Path
-from loguru import logger
-import json
+
+import keras_tuner as kt
 import numpy as np
 
-from cnnClassifier.entity.config_entity import ModelConfig
+
+import tensorflow as tf
+from loguru import logger
+
 from cnnClassifier.components.data_splitter import DataSplitter
 from cnnClassifier.components.prepare_model import PrepareModel
+from cnnClassifier.entity.config_entity import ImageConfig, ModelConfig
 from cnnClassifier.tuning.mlflow_tuning import MLflowHyperModel
+from tensorflow.keras.utils import plot_model
 
 
 class KerasTunerSearch:
     """Otimização de hiperparâmetros com Keras Tuner + Bayesian Optimization."""
 
-    def __init__(self, model_config: ModelConfig, data_splitter: DataSplitter):
+    def __init__(
+        self,
+        model_config: ModelConfig,
+        data_splitter: DataSplitter,
+        image_config: ImageConfig,
+    ):
         self.model_config = model_config
         self.data_splitter = data_splitter
+        self.image_config = image_config
         self.best_hp = None
         self.best_model = None
         self.tuner = None
@@ -28,6 +38,59 @@ class KerasTunerSearch:
         random.seed(seed)
         np.random.seed(seed)
         tf.random.set_seed(seed)
+
+    def _configure_backbone_trainability(
+        self, model: tf.keras.Model, unfreeze_last_n: int
+    ):
+        """Helper unificado que configura o congelamento/descongelamento das camadas do backbone."""
+        try:
+            backbone = model.get_layer("core_backbone")
+            logger.info(
+                f"🧠 Backbone 'core_backbone' encontrado ({len(backbone.layers)} camadas)"
+            )
+        except ValueError:
+            backbone = None
+            logger.warning("⚠️  Backbone 'core_backbone' não encontrado")
+
+        if backbone is not None:
+            total_layers = len(backbone.layers)
+            is_from_scratch = (
+                not self.model_config.weights
+                or str(self.model_config.weights).lower() == "none"
+            )
+
+            if is_from_scratch:
+                logger.info(
+                    f"🔓 Modelo from scratch detectado. Mantendo todas as {total_layers} camadas aprendendo (trainable=True)."
+                )
+                backbone.trainable = True
+            else:
+                backbone.trainable = True
+                layers_to_unfreeze = min(unfreeze_last_n, total_layers)
+
+                for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
+                    layer.trainable = False
+
+                for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
+                    # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
+                    layer.trainable = not isinstance(
+                        layer, tf.keras.layers.BatchNormalization
+                    )
+
+                logger.info(
+                    f"✅ Fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas (BNs mantidos congelados)."
+                )
+        else:
+            logger.warning(
+                "⚠️  Backbone pré-treinado não identificado - usando fallback"
+            )
+            trainable_layers = [l for l in model.layers if l.trainable]
+            if unfreeze_last_n > 0:
+                for layer in trainable_layers[-unfreeze_last_n:]:
+                    layer.trainable = True
+                logger.info(
+                    f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas."
+                )
 
     def build_model(self, hp):
         """
@@ -56,7 +119,7 @@ class KerasTunerSearch:
         if unfreeze_range is not None:
             unfreeze_last_n = hp.Int("unfreeze_last_n_layers", **unfreeze_range)
         else:
-            unfreeze_last_n = 0
+            unfreeze_last_n = hp.values.get("unfreeze_last_n_layers", 0)
         l2_reg = hp.Float("l2_regularization", **l2_range)
 
         logger.info(
@@ -69,84 +132,8 @@ class KerasTunerSearch:
         prepare_model = PrepareModel(self.model_config, image_config)
         model = prepare_model.build_model()
 
-        # Descongelar últimas camadas do BACKBONE
-        if unfreeze_last_n and unfreeze_last_n > 0:
-            try:
-                backbone = model.get_layer("core_backbone")
-                logger.info(
-                    f"🧠 Backbone 'core_backbone' encontrado ({len(backbone.layers)} camadas)"
-                )
-            except ValueError:
-                backbone = None
-                logger.warning("⚠️  Backbone 'core_backbone' não encontrado")
-
-            if backbone is not None:
-                total_layers = len(backbone.layers)
-                layers_to_unfreeze = min(unfreeze_last_n, total_layers)
-
-                # 1. Garante que o backbone comece todo congelado
-                backbone.trainable = True  # Permitir que as subcamadas sejam alteradas
-
-                # 2. Divide entre congeladas e descongeladas
-                cutoff = total_layers - layers_to_unfreeze
-
-                for i, layer in enumerate(backbone.layers):
-                    if i < cutoff:
-                        layer.trainable = False
-                    else:
-                        # ✅ SÓ descongela se NÃO for BatchNormalization
-                        if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                            layer.trainable = True
-                        else:
-                            layer.trainable = False
-
-                logger.info(
-                    f"✅ Fine-tune: liberadas {layers_to_unfreeze} camadas (BNs mantidos congelados)"
-                )
-
-                # total_layers = len(backbone.layers)
-                # # congela iniciais, libera últimas unfreeze_last_n
-                # layers_to_unfreeze = min(unfreeze_last_n, total_layers)
-
-                # for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                #     layer.trainable = False
-                # for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                #     # # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
-                #     # if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                #     #     layer.trainable = True
-                #     #     if hasattr(layer, "kernel_regularizer"):
-                #     #         layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
-                #     # else:
-                #     #     layer.trainable = False
-
-                #     # layer.trainable = True
-                #     # if hasattr(layer, "kernel_regularizer"):
-                #     # layer.kernel_regularizer = tf.keras.regularizers.l2(l2_reg)
-
-                #     if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                #         layer.trainable = True
-                #     else:
-                #         layer.trainable = False
-
-                logger.info(
-                    f"✅ Backbone fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas com L2={l2_reg:.6f}"
-                )
-            else:
-                logger.warning(
-                    "⚠️  Backbone pré-treinado não identificado - usando fallback"
-                )
-                # Fallback: unfreeze últimas camadas treináveis do modelo
-                trainable_layers = [l for l in model.layers if l.trainable]
-                if unfreeze_last_n > 0:
-                    for layer in trainable_layers[-unfreeze_last_n:]:
-                        layer.trainable = True
-                    logger.info(
-                        f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas"
-                    )
-                else:
-                    logger.info(
-                        "🔄 Fallback: nenhuma camada liberada (unfreeze_last_n_layers=0)"
-                    )
+        # Configurar congelamento/descongelamento do backbone unificadamente
+        self._configure_backbone_trainability(model, unfreeze_last_n)
 
         # Compilar usando mesmas definições do pipeline principal
         # TODO: implementar função com outros otimizadores, e chamar a função
@@ -222,9 +209,12 @@ class KerasTunerSearch:
         logger.info("Melhores Hiperparâmetros:")
         logger.info(f"   Learning Rate:       {self.best_hp.get('learning_rate'):.6f}")
         logger.info(f"   Dropout Rate:        {self.best_hp.get('dropout_rate'):.2f}")
+
+        unfreeze_val = self.best_hp.values.get("unfreeze_last_n_layers")
         logger.info(
-            f"   Unfreeze Last N:     {self.best_hp.get('unfreeze_last_n_layers')}"
+            f"   Unfreeze Last N:     {unfreeze_val if unfreeze_val is not None else 'N/A (from scratch)'}"
         )
+
         if "l2_regularization" in self.best_hp.values:
             logger.info(
                 f"   L2 Regularization:   {self.best_hp.get('l2_regularization'):.6f}"
@@ -278,38 +268,6 @@ class KerasTunerSearch:
 
         # Reconstruir modelo com melhores hiperparâmetros
         model = self.build_model(self.best_hp)
-
-        # Descongelar últimas camadas do BACKBONE
-        try:
-            backbone = model.get_layer("core_backbone")
-            logger.info(
-                f"🧠 Backbone 'core_backbone' encontrado no retreino ({len(backbone.layers)} camadas)"
-            )
-        except ValueError:
-            backbone = None
-            logger.warning("⚠️  Backbone 'core_backbone' não encontrado no retreino")
-
-        if backbone is not None:
-            total_layers = len(backbone.layers)
-            layers_to_unfreeze = min(
-                self.best_hp.values.get("unfreeze_last_n_layers", 20),
-                total_layers,
-            )
-            for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                layer.trainable = False
-            for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
-                if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                    layer.trainable = True
-                else:
-                    layer.trainable = False
-            logger.info(
-                f"✅ Fine-tuning (retreino): {layers_to_unfreeze} camadas liberadas de {total_layers}."
-            )
-        else:
-            logger.warning(
-                "⚠️  Backbone pré-treinado não encontrado no retreino - usando fallback"
-            )
 
         # Recompilar com LR fixo (pipeline)
         model.compile(
@@ -369,7 +327,6 @@ class KerasTunerSearch:
         logger.info("=" * 70)
 
         try:
-            from tensorflow.keras.utils import plot_model
 
             # 1. PNG da arquitetura
             architecture_path = (
@@ -439,8 +396,12 @@ class KerasTunerSearch:
         best_params = {
             "learning_rate": float(self.best_hp.get("learning_rate")),
             "dropout_rate": float(self.best_hp.get("dropout_rate")),
-            "unfreeze_last_n_layers": int(self.best_hp.get("unfreeze_last_n_layers")),
         }
+
+        if "unfreeze_last_n_layers" in self.best_hp.values:
+            best_params["unfreeze_last_n_layers"] = int(
+                self.best_hp.get("unfreeze_last_n_layers")
+            )
 
         # Adicionar L2 se existir (compatibilidade com buscas antigas)
         if "l2_regularization" in self.best_hp.values:
@@ -506,12 +467,17 @@ class KerasTunerSearch:
             logger.warning(f"   ⚠️ TFLite falhou: {e}")
 
         # 5. ONNX (opcional) - Portabilidade
+        # TODO: implementar quantização ONNX (QAT ou PTQ) para reduzir tamanho e acelerar inferência em edge devices
         logger.info("\n5️⃣ Tentando salvar ONNX (portabilidade)...")
         try:
-            import tf2onnx
             import onnx
+            import tf2onnx
 
-            spec = (tf.TensorSpec((None, 224, 224, 3), tf.float32, name="input"),)
+            # spec = (tf.TensorSpec((None, 224, 224, 3), tf.float32, name="input"),)
+            spec = (
+                tf.TensorSpec(self.image_config.size_tuple, tf.float32, name="input"),
+            )
+
             output_path = tf2onnx.convert.from_keras(model, input_signature=spec)
             onnx_model = onnx.load(output_path)
 
@@ -531,7 +497,7 @@ class KerasTunerSearch:
         logger.info("\n" + "=" * 70)
         logger.info("📦 RESUMO DOS FORMATOS SALVOS:")
         logger.info("=" * 70)
-        logger.info("\n📁 Diretório: {output_dir}")
+        logger.info(f"\n📁 Diretório: {output_dir}")
         logger.info("\n┌─ DESENVOLVIMENTO:")
         logger.info(
             f"│  .keras   {keras_size:6.2f} MB   - Formato nativo TF 2.8+ (✅ recomendado)"

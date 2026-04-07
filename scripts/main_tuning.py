@@ -84,6 +84,15 @@ def main(
     logger.info("🚀 PIPELINE DE TUNING - Keras Tuner com Bayesian Optimization")
     logger.info("=" * 80)
 
+    gpus = tf.config.list_physical_devices("GPU")
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logger.info("✅ GPU Memory Growth ativado")
+        except RuntimeError as e:
+            logger.warning(f"⚠️ Erro ao configurar Memory Growth: {e}")
+
     try:
 
         # ===== STAGE 0: Load Configs =====
@@ -268,7 +277,7 @@ def main(
 
             # Inicializar tuner
             logger.info("🔧 Inicializando Keras Tuner...")
-            tuner = KerasTunerSearch(model_config, data_splitter)
+            tuner = KerasTunerSearch(model_config, data_splitter, image_config)
 
             if mode == "tune":
                 # 4a) Busca de hiperparâmetros
@@ -350,12 +359,17 @@ def main(
                     logger.warning(f"⚠️ Falha ao logar curvas por época no run pai: {e}")
 
             if tuner.best_hp:
-                mlflow.log_param("best_lr", tuner.best_hp.get("learning_rate"))
-                mlflow.log_param("best_dropout", tuner.best_hp.get("dropout_rate"))
+                mlflow.log_param("best_lr", tuner.best_hp.values.get("learning_rate"))
                 mlflow.log_param(
-                    "best_unfreeze", tuner.best_hp.get("unfreeze_last_n_layers")
+                    "best_dropout", tuner.best_hp.values.get("dropout_rate")
                 )
-                mlflow.log_param("best_l2", tuner.best_hp.get("l2_regularization"))
+                mlflow.log_param(
+                    "best_unfreeze",
+                    tuner.best_hp.values.get("unfreeze_last_n_layers", "N/A"),
+                )
+                mlflow.log_param(
+                    "best_l2", tuner.best_hp.values.get("l2_regularization", "N/A")
+                )
 
             # ===== STAGE 5: Model Evaluation =====
             logger.info("\n🔄 === Stage 5: Model Evaluation (Detalhada) ===")
