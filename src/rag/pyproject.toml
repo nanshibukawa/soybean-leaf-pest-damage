@@ -1,0 +1,7 @@
+[project]
+name = "rag"
+version = "0.1.0"
+description = "RAG engine and ingestion for soybean pest information"
+dependencies = [
+    "langchain",
+]

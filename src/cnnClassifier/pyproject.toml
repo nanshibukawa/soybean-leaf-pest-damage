@@ -1,0 +1,6 @@
+[project]
+name = "cnnClassifier"
+version = "0.1.0"
+description = "Core training and model logic for soybean pest classification"
+dependencies = []
+
