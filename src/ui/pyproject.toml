@@ -1,0 +1,9 @@
+[project]
+name = "ui"
+version = "0.1.0"
+description = "Streamlit frontend for soybean pest classification"
+dependencies = [
+    "streamlit",
+    "requests",
+]
+

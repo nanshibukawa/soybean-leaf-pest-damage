@@ -1,0 +1,15 @@
+[project]
+name = "api"
+version = "0.1.0"
+description = "FastAPI backend for soybean pest classification and RAG"
+dependencies = [
+    "fastapi",
+    "uvicorn",
+    "cnnClassifier",
+    "rag",
+]
+
+[tool.uv.sources]
+cnnClassifier = { workspace = true }
+rag = { workspace = true }
+
