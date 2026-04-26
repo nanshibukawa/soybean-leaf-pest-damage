@@ -41,6 +41,9 @@ dependencies = [
     "keras>=3.13.2",
 ]
 
+[tool.uv.workspace]
+members = ["src/rag", "src/ui", "src/api", "src/cnnClassifier"]
+
 [project.optional-dependencies]
 dev = [
     "dvc>=3.60.1",
