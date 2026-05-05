@@ -5,11 +5,6 @@ import hdbscan
 from sentence_transformers import SentenceTransformer
 from transformers import AutoTokenizer
 
-from rag.shared.schemas import Chunk
-
-warnings.simplefilter(action="ignore", category=FutureWarning)
-warnings.filterwarnings(action="ignore")
-
 
 class SemanticChunker:
     def __init__(
@@ -31,9 +26,15 @@ class SemanticChunker:
             return texts, texts if len(texts) == 1 else []
 
         embeddings = self.model.encode(texts, show_progress_bar=False)
-        labels = hdbscan.HDBSCAN(
-            min_cluster_size=min_size, metric="euclidean"
-        ).fit_predict(embeddings)
+
+        # Suprimimos avisos específicos do HDBSCAN durante o fit se necessário
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", category=UserWarning, message=".*The 'metric' parameter.*"
+            )
+            labels = hdbscan.HDBSCAN(
+                min_cluster_size=min_size, metric="euclidean"
+            ).fit_predict(embeddings)
 
         clusters = defaultdict(list)
         orphans = []
