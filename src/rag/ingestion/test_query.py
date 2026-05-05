@@ -46,7 +46,7 @@ results = qdrant.query_points(
     limit=3,
 )
 
-max_score = max(result.score for result in results.points)
+max_score = max((result.score for result in results.points), default=1.0)
 
 for r in results.points:
     normalized_score = r.score / max_score
