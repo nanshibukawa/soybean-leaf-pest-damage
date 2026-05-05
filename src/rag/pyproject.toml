@@ -1,0 +1,14 @@
+[project]
+name = "rag"
+version = "0.1.0"
+description = "RAG engine and ingestion for soybean pest information"
+dependencies = [
+    "docling>=2.92.0",
+    "fastembed>=0.4.2",
+    "groq>=1.2.0",
+    "hdbscan>=0.8.42",
+    "langchain",
+    "pypdf>=6.10.2",
+    "qdrant-client>=1.12.1",
+    "sentence-transformers>=5.4.1",
+]
