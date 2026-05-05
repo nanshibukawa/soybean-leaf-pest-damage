@@ -1,7 +1,6 @@
 from qdrant_client import QdrantClient, models
 from api.models.search import SearchResponse, SearchResult
 from api.services.embeddings import EmbeddingService
-from api.config.settings import settings
 
 
 class SearchService:
@@ -21,14 +20,14 @@ class SearchService:
         results = self.qdrant_client.query_points(
             collection_name=self.collection_name,
             prefetch=[
-                {
-                    "prefetch": [
-                        {"query": query_dense, "using": "dense", "limit": 10},
-                        {"query": query_sparse, "using": "sparse", "limit": 10},
+                models.Prefetch(
+                    prefetch=[
+                        models.Prefetch(query=query_dense, using="dense", limit=10),
+                        models.Prefetch(query=query_sparse, using="sparse", limit=10),
                     ],
-                    "query": models.FusionQuery(fusion=models.Fusion.RRF),
-                    "limit": 15,
-                }
+                    query=models.FusionQuery(fusion=models.Fusion.RRF),
+                    limit=15,
+                )
             ],
             query=query_colbert,
             using="colbert",
