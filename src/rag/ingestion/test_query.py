@@ -94,7 +94,7 @@ if results.points:
                 "content": f"CONTEXTO:\n{context}\n\nPERGUNTA: {query_text}",
             },
         ],
-        temperature=0.0,  # Baixa temperatura para evitar alucinações
+        temperature=0.1,  # Baixa temperatura para evitar alucinações
         max_tokens=1024,
         top_p=1,
         stream=False,
