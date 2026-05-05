@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [tool.uv.workspace]
-members = ["src/rag", "src/ui", "src/api", "src/cnnClassifier"]
+members = ["src/rag", "src/ui", "src/app", "src/cnnClassifier"]
 
 [project.optional-dependencies]
 dev = [
