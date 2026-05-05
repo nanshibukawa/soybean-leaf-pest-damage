@@ -19,9 +19,12 @@ logger = logging.getLogger(__name__)
 class Ingestor:
     """Orquestrador modular para extração, chunking e vetorização."""
 
-    def __init__(self, extractor_type="docling", chunker_type="semantic"):
+    def __init__(
+        self, extractor_type="docling", chunker_type="semantic", force_recreate=False
+    ):
         self.extractor_type = extractor_type
         self.chunker_type = chunker_type
+        self.force_recreate = force_recreate
 
         # Infraestrutura
         self.vector_store = VectorStoreProvider()
@@ -58,6 +61,8 @@ class Ingestor:
                 all_chunks.append(
                     Chunk(
                         text=chunk,
+                        # TODO: Implementar mapeamento real de páginas para o SemanticChunker.
+                        # Atualmente ele agrupa parágrafos que podem vir de páginas diferentes.
                         page=0,
                         metadata={
                             "source": str(pdf_path.name),
@@ -97,13 +102,7 @@ class Ingestor:
             text = item.text
             formatted_text = f"passage: {text}"
 
-            # Truncagem de segurança
-            tokens = self.tokenizer.encode(formatted_text, add_special_tokens=True)
-            if len(tokens) > self.model_max_length:
-                formatted_text = self.tokenizer.decode(
-                    tokens[: self.model_max_length - 2], skip_special_tokens=True
-                )
-
+            # Gerar embeddings diretamente (a truncagem é delegada ao provider/modelo)
             embeddings = self.embedder.generate_passage_embeddings(formatted_text)
 
             points.append(
@@ -127,27 +126,28 @@ class Ingestor:
         pdf_dir = Path(DATA_PATH)
         all_points = []
 
-        print(f"🔍 Buscando PDFs em: {pdf_dir}")
-        self.vector_store.create_collection()
+        logger.debug(f"🔍 Buscando PDFs em: {pdf_dir}")
+        # Usa o parâmetro de instância para decidir se recria a coleção
+        self.vector_store.create_collection(force_recreate=self.force_recreate)
 
         for pdf_file in pdf_dir.glob("*.pdf"):
-            print(f"📄 Processando: {pdf_file.name}")
+            logger.info(f"📄 Processando: {pdf_file.name}")
             try:
                 points = self.process_file(pdf_file)
                 all_points.extend(points)
             except Exception as e:
-                print(f"❌ Erro ao processar {pdf_file.name}: {str(e)}")
+                logger.error(f"❌ Erro ao processar {pdf_file.name}: {str(e)}")
 
         if all_points:
-            print(
+            logger.info(
                 f"⬆️ Fazendo upload de {len(all_points)} pontos para '{COLLECTION_NAME}'..."
             )
             self.vector_store.client.upload_points(
                 collection_name=COLLECTION_NAME, points=all_points, batch_size=20
             )
-            print(f"✅ Sucesso! {len(all_points)} chunks indexados.")
+            logger.info(f"✅ Sucesso! {len(all_points)} chunks indexados.")
         else:
-            print("⚠️ Nenhum arquivo processado ou nenhum chunk gerado.")
+            logger.error("⚠️ Nenhum arquivo processado ou nenhum chunk gerado.")
 
 
 if __name__ == "__main__":

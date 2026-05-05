@@ -17,12 +17,22 @@ class VectorStoreProvider:
             api_key=os.getenv("QDRANT_API_KEY"),
         )
 
-    def create_collection(self):
+    def create_collection(self, force_recreate: bool = False):
+        """
+        Cria a coleção se não existir.
+        Se force_recreate=True, deleta a existente antes de criar.
+        """
         if self.client.collection_exists(COLLECTION_NAME):
-            print(f"Limpando coleção {COLLECTION_NAME}...")
-            self.client.delete_collection(COLLECTION_NAME)
+            if force_recreate:
+                print(
+                    f"⚠️ Forçando a recriação: Deletando coleção {COLLECTION_NAME}..."
+                )
+                self.client.delete_collection(COLLECTION_NAME)
+            else:
+                print(f"ℹ️ Coleção {COLLECTION_NAME} já existe. Ignorando criação.")
+                return
 
-        print(f"Criando coleção {COLLECTION_NAME}...")
+        print(f"🏗️ Criando coleção {COLLECTION_NAME}...")
         self.client.create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config={

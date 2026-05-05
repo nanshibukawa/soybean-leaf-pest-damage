@@ -79,7 +79,7 @@ class SemanticChunker:
 
     def create_chunks(self, text_content: str):
         paragraphs = [
-            p.strip() for p in text_content.split("\n\n") if len(p.strip().split()) > 10
+            p.strip() for p in text_content.split("\n\n") if len(p.strip().split()) > 3
         ]
         if not paragraphs:
             return []
