@@ -54,6 +54,7 @@ logs/
 *.jpeg
 *.drawio
 *.plantuml
+*.txt
 
 # Ignore all markdown files, but EXCLUDE README.md so it is tracked
 *.md
