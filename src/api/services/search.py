@@ -12,7 +12,7 @@ class SearchService:
         self.collection_name = collection_name
         self.embedding_service = EmbeddingService()
 
-    def search(self, query: str, limit: int = 3):
+    def search(self, query: str, limit: int = 3) -> SearchResponse:
         query_dense, query_sparse, query_colbert = self.embedding_service.embed_query(
             query
         )
