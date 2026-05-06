@@ -1,22 +1,47 @@
 # Soybean Leaf Pest Damage Detection
 
-Sistema de detecção de danos causados por pragas em folhas de soja utilizando deep learning.
+Sistema de detecção de danos causados por pragas em folhas de soja utilizando Deep Learning, com módulo complementar de RAG (Retrieval-Augmented Generation) para consulta em documentos técnicos.
+
+## 🔎 Sumário
+
+- [📋 Descrição](#-descrição)
+- [🚀 Tecnologias](#-tecnologias)
+- [📦 Instalação](#-instalação)
+- [🏗️ Estrutura do Projeto](#️-estrutura-do-projeto)
+- [📝 Uso](#-uso)
+- [📊 Dataset](#-dataset)
+- [🤖 Módulo RAG (Retrieval-Augmented Generation)](#-módulo-rag-retrieval-augmented-generation)
+- [🎓 Projeto](#-projeto)
+- [📄 Licença](#-licença)
 
 ## 📋 Descrição
 
-Este projeto implementa um sistema de classificação de imagens para identificar danos causados por pragas em folhas de soja, utilizando redes neurais convolucionais (CNN) e arquiteturas modernas baseadas em Transformers (MobileViT, ViT) com TensorFlow/Keras.
+Este projeto implementa:
+
+1. Classificação de imagens para identificar danos em folhas de soja, usando CNNs e arquiteturas baseadas em Transformers (ex.: MobileViT, ViT).
+2. Perguntas e respostas com RAG, integrando recuperação semântica de documentos e geração de respostas estruturadas com LLM.
 
 ## 🚀 Tecnologias
 
+### ML / Visão Computacional
 - Python 3.12+
 - TensorFlow 2.17.1
 - Keras (incluindo Keras 3)
 - Keras Tuner
-- MLflow e DagsHub (Rastreamento de Experimentos)
+- MLflow e DagsHub (rastreamento de experimentos)
 - scikit-learn
 - Pandas, NumPy
 - Matplotlib, Seaborn
 - MobileViT, Vision Transformer (ViT)
+
+### API / RAG
+- FastAPI
+- Pydantic
+- pydantic-ai
+- Groq (LLM)
+- Busca semântica com embeddings
+- Chunking semântico com Sentence Transformers + HDBSCAN
+- Estratégia híbrida de recuperação (sparse + dense + fusão RRF + reranking ColBERT)
 
 ## 📦 Instalação
 
@@ -38,17 +63,21 @@ pip install .[image-processing]
 ## 🏗️ Estrutura do Projeto
 
 ```
-├── src/cnnClassifier/           # Código fonte principal
-│   ├── components/              # Componentes do pipeline
-│   ├── config/                  # Configurações
-│   ├── entity/                  # Entidades e modelos
-│   ├── models/                  # Arquiteturas (inclui MobileViT, ViT, etc)
-│   ├── pipeline/                # Pipelines de treinamento e predição
-│   └── utils/                   # Funções utilitárias
-├── notebooks/            # Jupyter notebooks para análise
-├── scripts/              # Scripts de execução
-├── artifacts/            # Artefatos gerados (modelos, dados)
-└── logs/                 # Logs de execução
+├── src/
+│   ├── cnnClassifier/          # Pipeline de classificação de imagens
+│   │   ├── components/
+│   │   ├── config/
+│   │   ├── entity/
+│   │   ├── models/
+│   │   ├── pipeline/
+│   │   └── utils/
+│   ├── api/                    # API de busca + geração (RAG)
+│   ├── rag/                    # Engine e ingestão de documentos para RAG
+│   └── ui/                     # Interface de usuário
+├── notebooks/                  # Jupyter notebooks para análise
+├── scripts/                    # Scripts de execução
+├── artifacts/                  # Artefatos gerados (modelos, dados)
+└── logs/                       # Logs de execução
 ```
 
 ## 📝 Uso
@@ -149,13 +178,62 @@ python scripts/main_tuning.py \
 
 O projeto utiliza imagens de folhas de soja com diferentes níveis de danos causados por pragas.
 
+## 🤖 Módulo RAG (Retrieval-Augmented Generation)
+
+Além da classificação de imagens, o projeto inclui um módulo de **RAG** para perguntas e respostas com base em documentos técnicos sobre pragas e danos em folhas de soja.
+
+### Componentes
+- **Ingestão de documentos**: src/rag/ingestion/
+- **Engine de consulta RAG**: src/rag/
+- **API (busca + geração de resposta)**: src/api/
+
+### Como executar (visão rápida)
+```bash
+# API
+cd src
+uvicorn api.main:app --reload
+
+# (Opcional) pipeline de ingestão RAG
+python -m rag.ingestion.main
+```
+
+> Configure as variáveis de ambiente necessárias em api/config/settings.py antes de executar.
+
+### Documentação detalhada
+- [README da API](src/api/README.md)
+- [README do módulo RAG](src/rag/README.md)
+
+## Arquitetura e Tecnologias de RAG
+
+### 1) Chunking semântico (Semantic Chunking)
+ Os documentos são segmentados com base em similaridade semântica, usando embeddings, HDBSCAN e controle de tamanho por tokens. Isso preserva melhor o contexto do que um chunking puramente fixo.
+
+### 2) Embeddings híbridos
+A busca combina múltiplos sinais de relevância, por exemplo:
+- similaridade vetorial (semântica)
+- correspondência lexical/palavra-chave
+- reranking (quando aplicável)
+
+Isso reduz falsos positivos e melhora cobertura de consultas técnicas.
+
+### 3) Recuperação + Geração (RAG)
+Fluxo principal:
+1. recuperar chunks relevantes (SearchService)
+2. montar contexto com fonte e página
+3. gerar resposta estruturada com LLM (RAGService)
+4. retornar resposta + metadados de rastreabilidade
+
+### 4) Saída estruturada
+A resposta é validada por schema (RAGOutput/RAGResponse), garantindo formato consistente para consumo pela API/UI.
+
+
 ## 🎓 Projeto
 
 Desenvolvido como parte de pesquisa de mestrado.
 
 ## 📄 Licença
 
-Este projeto está sob licença [especificar licença].
+Este projeto está sob licença MIT (ajuste conforme a licença oficial adotada no repositório).
 
 ---
 
