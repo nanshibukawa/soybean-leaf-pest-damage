@@ -41,6 +41,7 @@ Este projeto implementa:
 - Pydantic
 - pydantic-ai
 - Groq (LLM)
+- Qdrant (vector database)
 - Busca semântica com embeddings
 - Chunking semântico com Sentence Transformers + HDBSCAN
 - Estratégia híbrida de recuperação (sparse + dense + fusão RRF + reranking ColBERT)
@@ -222,6 +223,9 @@ A busca combina múltiplos sinais de relevância, por exemplo:
 - reranking (quando aplicável)
 
 Isso reduz falsos positivos e melhora cobertura de consultas técnicas.
+
+### 2.1) Indexação vetorial com Qdrant
+Os embeddings são armazenados e consultados no Qdrant, que atua como base vetorial para a recuperação híbrida do RAG.
 
 ### 3) Recuperação + Geração (RAG)
 Fluxo principal:
