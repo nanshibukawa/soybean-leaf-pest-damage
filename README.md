@@ -205,7 +205,28 @@ uvicorn api.main:app --reload
 python -m rag.ingestion.main
 ```
 
-> Configure as variáveis de ambiente necessárias em api/config/settings.py antes de executar.
+> Configure as variáveis de ambiente necessárias em `src/api/config/settings.py` antes de executar.
+
+### Configuração necessária
+
+Crie um arquivo `.env` na raiz do projeto com, no mínimo, as variáveis abaixo:
+
+```env
+qdrant_url=https://<sua-instancia-qdrant>
+qdrant_api_key=<sua-chave-qdrant>
+groq_api_key=<sua-chave-groq>
+```
+
+Variáveis opcionais, com valores padrão definidos em `src/api/config/settings.py`:
+
+```env
+collection_name=agronomia-soja
+dense_model=intfloat/multilingual-e5-large
+sparse_model=Qdrant/bm25
+colbert_model=colbert-ir/colbertv2.0
+groq_base_url=https://api.groq.com/openai/v1
+groq_model=llama-3.3-70b-versatile
+```
 
 ### Documentação detalhada
 - [README da API](src/api/README.md)
