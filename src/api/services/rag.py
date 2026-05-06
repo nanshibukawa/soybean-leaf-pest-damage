@@ -1,12 +1,17 @@
 import logging
-import traceback
-from groq import Groq
+
 from api.config.settings import settings
 from api.config.prompts import RAG_PROMPT
-from api.models.rag import RAGResponse
+from api.models.rag import RAGResponse, RAGOutput
 from api.services.search import SearchService
 
+from pydantic_ai import Agent
+from pydantic_ai.models.groq import GroqModel
+from pydantic_ai.providers.groq import GroqProvider
+
 logger = logging.getLogger(__name__)
+
+from pydantic import BaseModel, Field
 
 
 class RAGService:
@@ -14,9 +19,18 @@ class RAGService:
 
     def __init__(self, search_service: SearchService):
         self.search_service = search_service
-        self.client = Groq(api_key=settings.groq_api_key)
+        self.model = GroqModel(
+            model_name=settings.groq_model,
+            provider=GroqProvider(api_key=settings.groq_api_key),
+        )
+        self.agent = Agent(
+            self.model,
+            output_type=RAGOutput,
+            system_prompt=RAG_PROMPT,
+            retries=3,
+        )
 
-    def generate_answer(self, query: str, limit: int = 3) -> RAGResponse:
+    async def generate_answer(self, query: str, limit: int = 3) -> RAGResponse:
         search_results = self.search_service.search(query=query, limit=limit)
 
         context_parts = []
@@ -26,29 +40,10 @@ class RAGService:
             context_parts.append(f"[Fonte: {source}, Pág: {page}]\n{result.text}")
 
         context = "\n\n---\n\n".join(context_parts)
-        prompt = RAG_PROMPT.format(context=context, query=query)
 
-        try:
-            completion = self.client.chat.completions.create(
-                model=settings.groq_model,
-                messages=[
-                    {
-                        "role": "user",
-                        "content": prompt,
-                    },
-                ],
-                temperature=0.0,
-                stream=False,
-            )
-        except Exception as e:
-            logger.error(
-                f"❌ Erro no {self.STAGE_NAME}",
-                extra={
-                    "error": str(e),
-                    "traceback": traceback.format_exc(),
-                },
-            )
-            raise
+        result = await self.agent.run(f"Contexto: {context}\n\nPergunta: {query}")
+
+        structured_data = result.output
 
         metadata = [
             {
@@ -60,6 +55,8 @@ class RAGService:
 
         return RAGResponse(
             query=query,
-            answer=completion.choices[0].message.content,
+            summary=structured_data.summary,
+            context=context_parts,
+            structured_answer=structured_data,
             metadata=metadata,
         )

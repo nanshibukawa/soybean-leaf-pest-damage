@@ -7,5 +7,5 @@ router = APIRouter()
 
 
 @router.post("/rag", response_model=RAGResponse)
-def rag(request: RAGRequest, rag_service: RAGService = Depends(get_rag_service)):
-    return rag_service.generate_answer(request.query, request.limit)
+async def rag(request: RAGRequest, rag_service: RAGService = Depends(get_rag_service)):
+    return await rag_service.generate_answer(request.query, request.limit)
