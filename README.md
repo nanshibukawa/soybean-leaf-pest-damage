@@ -41,6 +41,7 @@ Este projeto implementa:
 - Pydantic
 - pydantic-ai
 - Groq (LLM)
+- Qdrant (vector database)
 - Busca semântica com embeddings
 - Chunking semântico com Sentence Transformers + HDBSCAN
 - Estratégia híbrida de recuperação (sparse + dense + fusão RRF + reranking ColBERT)
@@ -204,7 +205,28 @@ uvicorn api.main:app --reload
 python -m rag.ingestion.main
 ```
 
-> Configure as variáveis de ambiente necessárias em api/config/settings.py antes de executar.
+> Configure as variáveis de ambiente necessárias em `src/api/config/settings.py` antes de executar.
+
+### Configuração necessária
+
+Crie um arquivo `.env` na raiz do projeto com, no mínimo, as variáveis abaixo:
+
+```env
+qdrant_url=https://<sua-instancia-qdrant>
+qdrant_api_key=<sua-chave-qdrant>
+groq_api_key=<sua-chave-groq>
+```
+
+Variáveis opcionais, com valores padrão definidos em `src/api/config/settings.py`:
+
+```env
+collection_name=agronomia-soja
+dense_model=intfloat/multilingual-e5-large
+sparse_model=Qdrant/bm25
+colbert_model=colbert-ir/colbertv2.0
+groq_base_url=https://api.groq.com/openai/v1
+groq_model=llama-3.3-70b-versatile
+```
 
 ### Documentação detalhada
 - [README da API](src/api/README.md)
@@ -222,6 +244,9 @@ A busca combina múltiplos sinais de relevância, por exemplo:
 - reranking (quando aplicável)
 
 Isso reduz falsos positivos e melhora cobertura de consultas técnicas.
+
+### 2.1) Indexação vetorial com Qdrant
+Os embeddings são armazenados e consultados no Qdrant, que atua como base vetorial para a recuperação híbrida do RAG.
 
 ### 3) Recuperação + Geração (RAG)
 Fluxo principal:
