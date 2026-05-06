@@ -1,14 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from api.models.rag import RAGRequest, RAGResponse
 from api.services.rag import RAGService
-
-from api.routers.search import search_service
+from api.dependencies import get_rag_service
 
 router = APIRouter()
 
-rag_service = RAGService(search_service=search_service)
-
 
 @router.post("/rag", response_model=RAGResponse)
-def rag(request: RAGRequest):
+def rag(request: RAGRequest, rag_service: RAGService = Depends(get_rag_service)):
     return rag_service.generate_answer(request.query, request.limit)
