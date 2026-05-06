@@ -267,7 +267,7 @@ Desenvolvido como parte de pesquisa de mestrado.
 <a id="licenca"></a>
 ## 📄 Licença
 
-Este projeto está sob licença MIT (ajuste conforme a licença oficial adotada no repositório).
+Este projeto está sob licença UTFPR.
 
 ---
 
