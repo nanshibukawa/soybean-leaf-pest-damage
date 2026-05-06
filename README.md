@@ -4,16 +4,17 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 
 ## 🔎 Sumário
 
-- [📋 Descrição](#-descrição)
-- [🚀 Tecnologias](#-tecnologias)
-- [📦 Instalação](#-instalação)
-- [🏗️ Estrutura do Projeto](#️-estrutura-do-projeto)
-- [📝 Uso](#-uso)
-- [📊 Dataset](#-dataset)
-- [🤖 Módulo RAG (Retrieval-Augmented Generation)](#-módulo-rag-retrieval-augmented-generation)
-- [🎓 Projeto](#-projeto)
-- [📄 Licença](#-licença)
+- [📋 Descrição](#descricao)
+- [🚀 Tecnologias](#tecnologias)
+- [📦 Instalação](#instalacao)
+- [🏗️ Estrutura do Projeto](#estrutura)
+- [📝 Uso](#uso)
+- [📊 Dataset](#dataset)
+- [🤖 Módulo RAG (Retrieval-Augmented Generation)](#rag)
+- [🎓 Projeto](#projeto)
+- [📄 Licença](#licenca)
 
+<a id="descricao"></a>
 ## 📋 Descrição
 
 Este projeto implementa:
@@ -21,6 +22,7 @@ Este projeto implementa:
 1. Classificação de imagens para identificar danos em folhas de soja, usando CNNs e arquiteturas baseadas em Transformers (ex.: MobileViT, ViT).
 2. Perguntas e respostas com RAG, integrando recuperação semântica de documentos e geração de respostas estruturadas com LLM.
 
+<a id="tecnologias"></a>
 ## 🚀 Tecnologias
 
 ### ML / Visão Computacional
@@ -43,6 +45,7 @@ Este projeto implementa:
 - Chunking semântico com Sentence Transformers + HDBSCAN
 - Estratégia híbrida de recuperação (sparse + dense + fusão RRF + reranking ColBERT)
 
+<a id="instalacao"></a>
 ## 📦 Instalação
 
 ```bash
@@ -60,6 +63,7 @@ pip install -e .[dev]
 pip install .[image-processing]
 ```
 
+<a id="estrutura"></a>
 ## 🏗️ Estrutura do Projeto
 
 ```
@@ -80,6 +84,7 @@ pip install .[image-processing]
 └── logs/                       # Logs de execução
 ```
 
+<a id="uso"></a>
 ## 📝 Uso
 
 ### Pipeline Completo
@@ -174,10 +179,12 @@ python scripts/main_tuning.py \
     --best-hp-path artifacts/tuning/best_hyperparameters.json
 ```
 
+<a id="dataset"></a>
 ## 📊 Dataset
 
 O projeto utiliza imagens de folhas de soja com diferentes níveis de danos causados por pragas.
 
+<a id="rag"></a>
 ## 🤖 Módulo RAG (Retrieval-Augmented Generation)
 
 Além da classificação de imagens, o projeto inclui um módulo de **RAG** para perguntas e respostas com base em documentos técnicos sobre pragas e danos em folhas de soja.
@@ -227,10 +234,12 @@ Fluxo principal:
 A resposta é validada por schema (RAGOutput/RAGResponse), garantindo formato consistente para consumo pela API/UI.
 
 
+<a id="projeto"></a>
 ## 🎓 Projeto
 
 Desenvolvido como parte de pesquisa de mestrado.
 
+<a id="licenca"></a>
 ## 📄 Licença
 
 Este projeto está sob licença MIT (ajuste conforme a licença oficial adotada no repositório).
