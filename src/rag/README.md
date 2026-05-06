@@ -53,5 +53,5 @@ python -m rag.ingestion.main
 
 ## Observações
 
-- A API HTTP de busca e geração está em `src/api/`.
+- A API HTTP de busca e geração está em `../api/`.
 - Configure variáveis de ambiente e chaves de modelo antes da execução.
