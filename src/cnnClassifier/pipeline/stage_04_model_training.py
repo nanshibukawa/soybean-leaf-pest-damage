@@ -4,6 +4,8 @@ from cnnClassifier.components.model_training import ModelTraining
 from cnnClassifier.config.constants import MODELS_DIR
 from cnnClassifier.entity.config_entity import ModelConfig
 from cnnClassifier.utils.logger import configure_logger
+from cnnClassifier.components.prepare_model import TopKGlobalAveragePooling2D
+from cnnClassifier.utils.data_utils import register_preprocess_input
 
 MODEL_STAGE_NAME = "Model Training"
 
@@ -44,6 +46,9 @@ class ModelTrainingPipeline:
 
         """
         try:
+            # Registrar custom preprocessing
+            register_preprocess_input(self.config.model_name)
+
             # Carrega modelo salvo
             model_path = stage3_result["model_path"]
             model = tf.keras.models.load_model(model_path)

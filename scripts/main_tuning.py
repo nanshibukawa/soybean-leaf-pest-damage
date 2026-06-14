@@ -356,7 +356,9 @@ def main(
                         "📈 Curvas do retreino logadas no run pai (prefixo: retrain_*)"
                     )
                 except Exception as e:
-                    logger.warning(f"⚠️ Falha ao logar curvas por época no run pai: {e}")
+                    logger.warning(
+                        f"⚠️ Falha ao logar curvas por época no run pai: {e}"
+                    )
 
             if tuner.best_hp:
                 mlflow.log_param("best_lr", tuner.best_hp.values.get("learning_rate"))
@@ -434,7 +436,23 @@ def main(
                     class_report = test_result["metrics"].get(
                         "classification_report", {}
                     )
-                    class_names = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+                    # Obter classes dinamicamente a partir das subpastas
+                    data_dir = Path(DATA_SOURCE_DIR)
+
+                    if not data_dir.exists() or not any(data_dir.iterdir()):
+                        raise FileNotFoundError(
+                            f"❌ O diretório de dados '{data_dir}' não existe ou está vazio. "
+                            "Certifique-se de executar a etapa de ingestão de dados (Stage 1) "
+                            "antes de rodar a avaliação."
+                        )
+
+                    class_names = sorted(
+                        [
+                            d.name
+                            for d in data_dir.iterdir()
+                            if d.is_dir() and not d.name.startswith(".")
+                        ]
+                    )
                     for cls in class_names:
                         if cls in class_report:
                             cls_safe = cls.replace(" ", "_").lower()
@@ -475,7 +493,24 @@ def main(
 
                 # Logar métricas por classe (validação)
                 class_report = stage5_result["metrics"].get("classification_report", {})
-                class_names = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+                # Obter classes dinamicamente a partir das subpastas
+                data_dir = Path(DATA_SOURCE_DIR)
+
+                if not data_dir.exists() or not any(data_dir.iterdir()):
+                    raise FileNotFoundError(
+                        f"❌ O diretório de dados '{data_dir}' não existe ou está vazio. "
+                        "Certifique-se de executar a etapa de ingestão de dados (Stage 1) "
+                        "antes de rodar a avaliação."
+                    )
+
+                class_names = sorted(
+                    [
+                        d.name
+                        for d in data_dir.iterdir()
+                        if d.is_dir() and not d.name.startswith(".")
+                    ]
+                )
+
                 for cls in class_names:
                     if cls in class_report:
                         cls_safe = cls.replace(" ", "_").lower()
