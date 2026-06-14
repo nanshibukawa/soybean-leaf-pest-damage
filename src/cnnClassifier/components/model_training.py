@@ -77,15 +77,15 @@ class ModelTraining:
             self._compile_model()
 
             logger.info("Iniciando fit do modelo...")
-            class_weight = self.model_config.class_weights
-            logger.info(f"🔍 DEBUG class_weights injetados no fit: {class_weight}")
+            # class_weight = self.model_config.class_weights
+            # logger.info(f"🔍 DEBUG class_weights injetados no fit: {class_weight}")
 
             self.history = self.model.fit(
                 train_data,
                 validation_data=validation_data,
                 epochs=self.model_config.epochs,
                 callbacks=self._callbacks(),
-                class_weight=class_weight,
+                # class_weight=class_weight,
                 verbose=1,
             )
             return self.history
@@ -146,9 +146,8 @@ class ModelTraining:
     def _compile_model(self):
         loss_function = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
         self.model.compile(
-            optimizer=tf.keras.optimizers.Adam(
+            optimizer=tf.keras.optimizers.SGD(
                 learning_rate=self.model_config.learning_rate,
-                epsilon=1e-7,
             ),
             # loss=self.model_config.loss_function,
             loss=loss_function,
@@ -156,4 +155,4 @@ class ModelTraining:
         )
         logger.info(f"📉 Loss function: {loss_function}")
 
-        logger.info("Modelo Adam recompilado com configurações de treinamento")
+        logger.info("Modelo SGD recompilado com configurações de treinamento")
