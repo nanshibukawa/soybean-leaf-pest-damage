@@ -36,6 +36,7 @@ class DataSplittingPipeline:
 
         try:
 
+            logger.info(f"📂 Usando dataset do diretório: {self.image_config.data_dir}")
             logger.info("Iniciando o DataSplitter...")
 
             data_split_config = DataSplitterConfig(

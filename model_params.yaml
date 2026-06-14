@@ -24,7 +24,7 @@ training:
   # loss: "sparse_categorical_crossentropy"
   loss: "categorical_crossentropy"
   metrics: ["accuracy"]
-  top_k_percent: 0.15
+  # top_k_percent: 0.15
   # class_weights:
   #   0: 0.7
   #   1: 1.0
@@ -102,10 +102,10 @@ tuning:
         step: 4
         default: 32
       top_k_percent:
-        min_value: 0.05
-        max_value: 0.2
-        step: 0.02
-        default: 0.15
+        min_value: 0.25
+        max_value: 0.85
+        step: 0.05
+        default: 0.50
 
     mobilenetv3small:
       learning_rate:
