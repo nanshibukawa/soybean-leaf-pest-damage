@@ -131,13 +131,11 @@ class KerasTunerSearch:
         # Injetar os valores amostrados no objeto de configuração antes do build
         self.model_config.l2_regularization = float(l2_reg)
         self.model_config.dropout_rate = float(dropout_rate)
+        self.model_config.top_k_percent = float(top_k_percent)
 
         # Sobrescrever temporariamente o valor estático do YAML com o valor dinâmico escolhido pelo Tuner
         image_config = self.data_splitter.image_config
         prepare_model = PrepareModel(self.model_config, image_config)
-
-        # Modificar a instância interna antes da montagem final do grafo
-        prepare_model.model_config.top_k_percent = float(top_k_percent)
         model = prepare_model.build_model()
 
         # Configurar malha de treinamento do backbone
@@ -209,7 +207,7 @@ class KerasTunerSearch:
             validation_data=val_ds,
             epochs=epochs_per_trial,
             callbacks=self._callbacks(),
-            class_weight=self.model_config.class_weights,
+            # class_weight=self.model_config.class_weights,
             verbose=1,
         )
 
@@ -265,7 +263,7 @@ class KerasTunerSearch:
             validation_data=val_ds,
             epochs=epochs,
             callbacks=callbacks,
-            class_weight=self.model_config.class_weights,
+            # class_weight=self.model_config.class_weights,
             verbose=1,
         )
 

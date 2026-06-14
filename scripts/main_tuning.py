@@ -183,7 +183,8 @@ def main(
             )
 
             # Logar class_weights se existir
-            class_weights = getattr(model_config, "class_weights", None)
+            # class_weights = getattr(model_config, "class_weights", None)
+            class_weights = None
             if class_weights:
                 class_names = ["caterpillar", "diabrotica_speciosa", "healthy"]
                 for class_id, weight in class_weights.items():
