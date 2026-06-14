@@ -54,6 +54,7 @@ class DataSplitter:
         # Carregar dataset completo
         full_dataset = tf.keras.utils.image_dataset_from_directory(
             directory=self.image_config.data_dir,
+            label_mode="categorical",
             shuffle=True,
             seed=self.data_split_config.random_seed,
             image_size=(self.image_config.altura, self.image_config.largura),
@@ -90,6 +91,19 @@ class DataSplitter:
     def load_train_data(self):
         """Carrega dados de treino (compatível com Stage 5)"""
         train_data, _, _ = self._load_all_splits()
+
+        # O dataset já vem batchado pelo image_dataset_from_directory
+        # CutMix operates on (images, labels) batches
+        seed = self.data_split_config.random_seed
+        cutmix = tf.keras.layers.CutMix(seed=seed)
+
+        def apply_cutmix(images, labels):
+            outputs = cutmix({"images": images, "labels": labels})
+            return outputs["images"], outputs["labels"]
+
+        train_data = train_data.map(apply_cutmix, num_parallel_calls=tf.data.AUTOTUNE)
+        train_data = train_data.prefetch(tf.data.AUTOTUNE)
+
         return train_data
 
     def load_validation_data(self):
@@ -122,8 +136,11 @@ class DataSplitter:
             counts = np.zeros(num_classes, dtype=int)
             for _, y in ds:
                 y = y.numpy()
+                y_indices = np.argmax(
+                    y, axis=-1
+                )  # <--- Reverte o One-Hot para o índice escalar
                 for i in range(num_classes):
-                    counts[i] += (y == i).sum()
+                    counts[i] += (y_indices == i).sum()
             return counts
 
         def summarize(ds):

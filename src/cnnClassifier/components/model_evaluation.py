@@ -6,12 +6,12 @@ import seaborn as sns
 
 from pathlib import Path
 from sklearn.metrics import (
-    accuracy_score, 
-    classification_report, 
-    confusion_matrix, 
-    f1_score, 
-    precision_score, 
-    recall_score
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
 )
 import tensorflow as tf
 
@@ -90,7 +90,13 @@ class ModelEvaluator:
             predictions = model.predict(batch_images, verbose=0)
             predicted_classes = np.argmax(predictions, axis=1)
 
-            y_true.extend(batch_labels.numpy())
+            # Ajuste para suportar OHE caso o label não seja int
+            if len(batch_labels.shape) > 1 and batch_labels.shape[-1] > 1:
+                batch_labels_idx = np.argmax(batch_labels.numpy(), axis=-1)
+                y_true.extend(batch_labels_idx)
+            else:
+                y_true.extend(batch_labels.numpy())
+
             y_pred.extend(predicted_classes)
 
         return np.array(y_true), np.array(y_pred)

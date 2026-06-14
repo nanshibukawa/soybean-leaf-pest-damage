@@ -10,6 +10,8 @@ from cnnClassifier.components.model_evaluation import (
 )
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.utils.data_utils import create_dirs
+from cnnClassifier.components.prepare_model import TopKGlobalAveragePooling2D
+from cnnClassifier.utils.data_utils import register_preprocess_input
 
 logger = configure_logger(__name__)
 
@@ -25,7 +27,23 @@ class ModelEvaluationPipeline:
         self.image_config = image_config
         self.model_dir = MODELS_DIR
         self.evaluation_dir = Path("artifacts/evaluation")
-        self.class_names = ["Caterpillar", "Diabrotica speciosa", "Healthy"]
+        # Obter classes dinamicamente a partir das subpastas ordenadas alfabeticamente
+        data_dir = Path(image_config.data_dir)
+
+        if not data_dir.exists() or not any(data_dir.iterdir()):
+            raise FileNotFoundError(
+                f"❌ O diretório de dados '{data_dir}' não existe ou está vazio. "
+                "Certifique-se de executar a etapa de ingestão de dados (Stage 1) "
+                "antes de rodar a avaliação."
+            )
+
+        self.class_names = sorted(
+            [
+                d.name
+                for d in data_dir.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            ]
+        )
 
         self.evaluator = ModelEvaluator(
             model_config,
@@ -52,6 +70,8 @@ class ModelEvaluationPipeline:
             raise FileNotFoundError(f"Modelo não encontrado em {self.model_dir}")
 
         logger.info(f"📥 Carregando modelo: {model_path}")
+
+        register_preprocess_input(self.model_config.model_name)
         model = tf.keras.models.load_model(model_path)
         return model, model_path
 
