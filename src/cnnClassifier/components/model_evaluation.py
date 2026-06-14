@@ -96,16 +96,8 @@ class ModelEvaluator:
                 batch_labels_idx = np.argmax(labels_np, axis=-1)
                 y_true.extend(batch_labels_idx)
             else:
-                y_true.extend(np.squeeze(labels_np))
+                y_true.extend(labels_np.ravel())
             y_pred.extend(predicted_classes)
-            # # Ajuste para suportar OHE caso o label não seja int
-            # if len(batch_labels.shape) > 1 and batch_labels.shape[-1] > 1:
-            #     batch_labels_idx = np.argmax(batch_labels.numpy(), axis=-1)
-            #     y_true.extend(batch_labels_idx)
-            # else:
-            #     y_true.extend(batch_labels.numpy())
-
-            # y_pred.extend(predicted_classes)
 
         return np.array(y_true), np.array(y_pred)
 
