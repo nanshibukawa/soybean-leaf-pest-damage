@@ -40,6 +40,7 @@ class TopKGlobalAveragePooling2D(tf.keras.layers.Layer):
 
         # Calcular o número de elementos 'k' a serem selecionados
         k = tf.cast(tf.cast(h * w, tf.float32) * self.k_percent, tf.int32)
+        k = tf.clip_by_value(k, 1, h * w)
 
         # Encontrar os 'k' maiores valores em cada canal
         # top_k retorna (valores, índices)
