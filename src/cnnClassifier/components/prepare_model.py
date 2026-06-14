@@ -17,6 +17,41 @@ if physical_devices:
 logger = configure_logger(__name__)
 
 
+@tf.keras.utils.register_keras_serializable()
+class TopKGlobalAveragePooling2D(tf.keras.layers.Layer):
+    """
+    Camada de pooling que calcula a média apenas dos 'k' valores mais altos.
+    Isso ajuda a focar nos sinais mais fortes (danos) e ignorar o ruído de fundo.
+    """
+
+    def __init__(self, k_percent=0.1, **kwargs):
+        super(TopKGlobalAveragePooling2D, self).__init__(**kwargs)
+        self.k_percent = k_percent
+
+    def call(self, inputs):
+        # Shape de entrada: (batch_size, height, width, channels)
+        shape = tf.shape(inputs)
+        b, h, w, c = shape[0], shape[1], shape[2], shape[3]
+
+        # Achatar as dimensões espaciais
+        flattened = tf.reshape(inputs, [b, h * w, c])
+
+        # Calcular o número de elementos 'k' a serem selecionados
+        k = tf.cast(tf.cast(h * w, tf.float32) * self.k_percent, tf.int32)
+
+        # Encontrar os 'k' maiores valores em cada canal
+        # top_k retorna (valores, índices)
+        top_k_values, _ = tf.math.top_k(flattened, k=k, sorted=False)
+
+        # Calcular a média apenas desses 'k' valores
+        return tf.reduce_mean(top_k_values, axis=1)
+
+    def get_config(self):
+        config = super(TopKGlobalAveragePooling2D, self).get_config()
+        config.update({"k_percent": self.k_percent})
+        return config
+
+
 class PrepareModel:
     """
     Componente para preparar o modelo de classificação CNN.
@@ -109,7 +144,8 @@ class PrepareModel:
 
         # Aplicar a camada de pré-processamento nativa do Keras devolvida pela Factory
         if preprocess_layer is not None:
-            x = preprocess_layer(x)
+            # Emvolvemos a função em uma camada Lambda para salvá-la no grafo .h5
+            x = tf.keras.layers.Lambda(preprocess_layer, name="preprocessing_lambda")(x)
 
         # IMPORTANTE: Chamar modelo base com training=False para manter BatchNormalization em modo de inferência
         # Isto é crítico durante fine-tuning: impede que as estatísticas armazenadas (mean/variance)
@@ -150,12 +186,17 @@ class PrepareModel:
             elif use_se_block:
                 x = se_block(x)
 
-            # Pooling espacial para CNNs
-            x = tf.keras.layers.GlobalAveragePooling2D()(x)
+            # --- Top-K Pooling para focar nos sinais mais fortes (danos) ---
+            logger.info(
+                "💥 Aplicando Top-K Pooling para focar nos danos mais evidentes"
+            )
+            # x = TopKGlobalAveragePooling2D(k_percent=0.15)(x)
+            k_top = getattr(self.model_config, "top_k_percent", 0.15)
+            logger.info(f"💥 Aplicando Top-K Pooling adaptativo com k={k_top}")
+            x = TopKGlobalAveragePooling2D(k_percent=k_top)(x)
 
         elif len(x.shape) == 3:
-            # Para Transformers, não podemos usar SE Blocks (pois eles usam convoluções 2D internamente).
-            # Fazemos o pooling temporal/sequencial diretamente.
+            # Para Transformers, o pooling é 1D
             x = tf.keras.layers.GlobalAveragePooling1D()(x)
 
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
@@ -166,6 +207,7 @@ class PrepareModel:
             kernel_constraint=tf.keras.constraints.MaxNorm(3),
             # kernel_regularizer=tf.keras.regularizers.L2(0.01),
             kernel_regularizer=tf.keras.regularizers.L2(l2_val),
+            name="dense_128",
         )(x)
 
         x = tf.keras.layers.BatchNormalization()(x)

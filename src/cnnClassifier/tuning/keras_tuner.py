@@ -4,8 +4,6 @@ from pathlib import Path
 
 import keras_tuner as kt
 import numpy as np
-
-
 import tensorflow as tf
 from loguru import logger
 
@@ -32,8 +30,6 @@ class KerasTunerSearch:
         self.best_model = None
         self.tuner = None
 
-        # Seeds globais para reprodutibilidade
-        # TODO VERIFY
         seed = getattr(model_config, "random_seed", 42)
         random.seed(seed)
         np.random.seed(seed)
@@ -42,7 +38,7 @@ class KerasTunerSearch:
     def _configure_backbone_trainability(
         self, model: tf.keras.Model, unfreeze_last_n: int
     ):
-        """Helper unificado que configura o congelamento/descongelamento das camadas do backbone."""
+        """Configura o congelamento/descongelamento das camadas do backbone."""
         try:
             backbone = model.get_layer("core_backbone")
             logger.info(
@@ -50,7 +46,7 @@ class KerasTunerSearch:
             )
         except ValueError:
             backbone = None
-            logger.warning("⚠️  Backbone 'core_backbone' não encontrado")
+            logger.warning("⚠️ Backbone 'core_backbone' não encontrado")
 
         if backbone is not None:
             total_layers = len(backbone.layers)
@@ -61,7 +57,7 @@ class KerasTunerSearch:
 
             if is_from_scratch:
                 logger.info(
-                    f"🔓 Modelo from scratch detectado. Mantendo todas as {total_layers} camadas aprendendo (trainable=True)."
+                    f"🔓 Modelo from scratch detectado. Todas as {total_layers} camadas ativas."
                 )
                 backbone.trainable = True
             else:
@@ -72,18 +68,15 @@ class KerasTunerSearch:
                     layer.trainable = False
 
                 for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                    # ⚠️ Manter BatchNormalization congelado (best practice for transfer learning)
                     layer.trainable = not isinstance(
                         layer, tf.keras.layers.BatchNormalization
                     )
 
                 logger.info(
-                    f"✅ Fine-tune: liberadas {layers_to_unfreeze} de {total_layers} camadas (BNs mantidos congelados)."
+                    f"✅ Fine-tune: liberadas {layers_to_unfreeze} camadas (BNs congelados)."
                 )
         else:
-            logger.warning(
-                "⚠️  Backbone pré-treinado não identificado - usando fallback"
-            )
+            logger.warning("⚠️ Backbone não identificado - usando fallback")
             trainable_layers = [l for l in model.layers if l.trainable]
             if unfreeze_last_n > 0:
                 for layer in trainable_layers[-unfreeze_last_n:]:
@@ -92,90 +85,111 @@ class KerasTunerSearch:
                     f"🔄 Fallback: {len(trainable_layers[-unfreeze_last_n:])} camadas liberadas."
                 )
 
-    def build_model(self, hp):
-        """
-        Constrói modelo com hiperparâmetros sugeridos pelo tuner.
+    def _calculate_steps(self, epochs: int) -> tuple:
+        """Calcula dinamicamente os steps de treino para o CosineDecay."""
+        try:
+            train_ds = self.data_splitter.load_train_data()
+            steps_per_epoch = len(train_ds)
+        except Exception:
+            steps_per_epoch = 32  # Fallback seguro caso o gerador não exponha o __len__
 
-        Args:
-            hp: Objeto HyperParameters do Keras Tuner
+        total_steps = steps_per_epoch * epochs
+        warmup_steps = int(total_steps * 0.1)  # 10% do treino total será warmup
+        return total_steps, warmup_steps
 
-        Returns:
-            Modelo Keras compilado
-        """
-        # Carregar ranges de tuning do YAML baseado no modelo
+    def build_model(self, hp, epochs_context: int = 50):
+        """Constrói e compila o modelo com suporte a busca dinâmica de hiperparâmetros."""
         search_space = self.model_config.get_tuning_search_space()
 
-        # Hiperparâmetros a otimizar (com fallback para defaults)
         lr_range = search_space.get("learning_rate")
-
         dropout_range = search_space.get("dropout_rate")
-
-        # Torna unfreeze_last_n_layers opcional
         unfreeze_range = search_space.get("unfreeze_last_n_layers", None)
         l2_range = search_space.get("l2_regularization")
 
+        # Registro de hiperparâmetros no espaço de busca
         hp_learning_rate = hp.Float("learning_rate", **lr_range)
         dropout_rate = hp.Float("dropout_rate", **dropout_range)
+
         if unfreeze_range is not None:
             unfreeze_last_n = hp.Int("unfreeze_last_n_layers", **unfreeze_range)
         else:
             unfreeze_last_n = hp.values.get("unfreeze_last_n_layers", 0)
+
         l2_reg = hp.Float("l2_regularization", **l2_range)
 
-        logger.info(
-            f"Building model: lr={hp_learning_rate:.6f}, dropout={dropout_rate:.2f}, unfreeze={unfreeze_last_n}, l2={l2_reg:.6f}"
+        # 🔥 ALTERAÇÃO 1: Adicionar a taxa de esparsidade do Top-K no Tuner!
+        # Isso permite encontrar o balanço exato entre manchas de praga e tecido saudável.
+        top_k_percent = hp.Float(
+            "top_k_percent", min_value=0.05, max_value=0.25, step=0.05, default=0.15
         )
+
+        logger.info(
+            f"Building model: lr={hp_learning_rate:.6f}, dropout={dropout_rate:.2f}, "
+            f"unfreeze={unfreeze_last_n}, l2={l2_reg:.6f}, top_k={top_k_percent:.2f}"
+        )
+
+        # Injetar os valores amostrados no objeto de configuração antes do build
         self.model_config.l2_regularization = float(l2_reg)
         self.model_config.dropout_rate = float(dropout_rate)
 
+        # Sobrescrever temporariamente o valor estático do YAML com o valor dinâmico escolhido pelo Tuner
         image_config = self.data_splitter.image_config
         prepare_model = PrepareModel(self.model_config, image_config)
+
+        # Modificar a instância interna antes da montagem final do grafo
+        prepare_model.model_config.top_k_percent = float(top_k_percent)
         model = prepare_model.build_model()
 
-        # Configurar congelamento/descongelamento do backbone unificadamente
+        # Configurar malha de treinamento do backbone
         self._configure_backbone_trainability(model, unfreeze_last_n)
 
-        # Compilar usando mesmas definições do pipeline principal
-        # TODO: implementar função com outros otimizadores, e chamar a função
-        optimizer = tf.keras.optimizers.Adam(learning_rate=hp_learning_rate)
-        model.compile(
-            optimizer=optimizer,
-            loss=self.model_config.loss_function,
-            metrics=self.model_config.metrics,
+        # 🔥 ALTERAÇÃO 2: Cálculo dos steps dinâmicos baseados no contexto da fase de execução
+        total_decay_steps, warmup_steps = self._calculate_steps(epochs_context)
+
+        lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+            initial_learning_rate=1e-5,
+            decay_steps=total_decay_steps,
+            alpha=0.001,  # Não zerar totalmente o LR evita estagnação extrema no fim do treino
+            warmup_target=hp_learning_rate,
+            warmup_steps=warmup_steps,
         )
 
+        optimizer = tf.keras.optimizers.SGD(
+            learning_rate=lr_schedule,
+            momentum=0.9,
+            nesterov=True,
+        )
+
+        loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
+
+        model.compile(
+            optimizer=optimizer,
+            loss=loss_fn,
+            metrics=self.model_config.metrics,
+        )
         return model
 
     def search(
-        self,
-        max_trials: int,
-        epochs_per_trial: int,
-        log_trials_to_mlflow: bool = True,
+        self, max_trials: int, epochs_per_trial: int, log_trials_to_mlflow: bool = True
     ):
-        """
-        Executa busca de hiperparâmetros com Bayesian Optimization.
-
-        Args:
-            max_trials: Número máximo de configurações a testar
-            epochs_per_trial: Épocas de treino por candidato
-            log_trials_to_mlflow: Se True, loga cada trial no MLflow como child run
-        """
+        """Executa busca de hiperparâmetros com Bayesian Optimization."""
         logger.info("Iniciando busca com Bayesian Optimization...")
-        logger.info(f"   Max trials: {max_trials}")
-        logger.info(f"   Epochs per trial: {epochs_per_trial}")
-        logger.info(f"   Log trials to MLflow: {log_trials_to_mlflow}")
 
-        # Escolher hypermodel baseado no flag de MLflow
+        # Função lambda para repassar o contexto das épocas de trial ao build_model
+        build_with_context = lambda hp: self.build_model(
+            hp, epochs_context=epochs_per_trial
+        )
+
         if log_trials_to_mlflow:
             hypermodel = MLflowHyperModel(
-                build_fn=self.build_model, experiment_name=self.model_config.model_name
+                build_fn=build_with_context,
+                experiment_name=self.model_config.model_name,
             )
             logger.info("🔗 MLflow trial logging ATIVADO")
         else:
-            hypermodel = self.build_model
+            hypermodel = build_with_context
             logger.info("🔗 MLflow trial logging DESATIVADO")
 
-        # Criar tuner
         self.tuner = kt.BayesianOptimization(
             hypermodel=hypermodel,
             objective="val_accuracy",
@@ -187,47 +201,26 @@ class KerasTunerSearch:
             overwrite=True,
         )
 
-        # Carregar dados
         train_ds = self.data_splitter.load_train_data()
         val_ds = self.data_splitter.load_validation_data()
 
-        logger.info(f"Dataset sizes: train={len(train_ds)}, val={len(val_ds)}")
-
-        # Rodar busca
         self.tuner.search(
             train_ds,
             validation_data=val_ds,
             epochs=epochs_per_trial,
             callbacks=self._callbacks(),
+            class_weight=self.model_config.class_weights,
             verbose=1,
         )
 
-        # Melhores hiperparâmetros
         self.best_hp = self.tuner.get_best_hyperparameters(num_trials=1)[0]
-
-        logger.info("Busca completa!")
-        logger.info("Melhores Hiperparâmetros:")
-        logger.info(f"   Learning Rate:       {self.best_hp.get('learning_rate'):.6f}")
-        logger.info(f"   Dropout Rate:        {self.best_hp.get('dropout_rate'):.2f}")
-
-        unfreeze_val = self.best_hp.values.get("unfreeze_last_n_layers")
-        logger.info(
-            f"   Unfreeze Last N:     {unfreeze_val if unfreeze_val is not None else 'N/A (from scratch)'}"
-        )
-
-        if "l2_regularization" in self.best_hp.values:
-            logger.info(
-                f"   L2 Regularization:   {self.best_hp.get('l2_regularization'):.6f}"
-            )
-        logger.info("✅ Melhor modelo recuperado - pronto para retreino")
+        logger.info("✅ Melhor modelo mapeado. Melhores parâmetros extraídos.")
 
     def _callbacks(self):
-        # Suprimir warnings de HDF5 durante tuning (checkpoints internos do EarlyStopping)
         import warnings
 
         warnings.filterwarnings("ignore", message=".*HDF5 file.*")
-
-        callbacks = [
+        return [
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_accuracy",
                 patience=8,
@@ -235,60 +228,29 @@ class KerasTunerSearch:
                 verbose=1,
                 mode="max",
             ),
-            tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_accuracy",
-                factor=0.2,
-                patience=5,
-                min_lr=1e-7,
-                verbose=1,
-                mode="max",
-            ),
         ]
-        return callbacks
 
     def retrain_best_model(self, epochs: int = 100):
-        """
-        Reconstrói e treina o modelo final com os melhores hiperparâmetros.
-
-        Args:
-            epochs: Número de épocas para treinar
-        """
+        """Reconstrói e treina o modelo final adaptando o agendador de LR para o espaço estendido."""
         if self.best_hp is None:
             raise ValueError("Execute .search() antes de .retrain_best_model()")
 
-        # Suprimir warnings de HDF5 do EarlyStopping
         import warnings
 
         warnings.filterwarnings("ignore", message=".*HDF5.*")
         warnings.filterwarnings("ignore", category=UserWarning, module="keras")
 
         logger.info(
-            f"Retreinando modelo com melhores hiperparâmetros por {epochs} épocas..."
+            f"Retreinando modelo final ajustando scheduler para o ciclo de {epochs} épocas..."
         )
 
-        # Reconstruir modelo com melhores hiperparâmetros
-        model = self.build_model(self.best_hp)
+        # 🔥 ALTERAÇÃO 3: O modelo final é reconstruído passando o escopo correto de épocas estendidas
+        model = self.build_model(self.best_hp, epochs_context=epochs)
 
-        # Recompilar com LR fixo (pipeline)
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(
-                learning_rate=self.best_hp.get("learning_rate"),
-                # epsilon=1e-8,
-                # beta_1=0.9,
-                # beta_2=0.999,
-                # amsgrad=False,
-            ),
-            loss=self.model_config.loss_function,
-            metrics=self.model_config.metrics,
-        )
-
-        # Carregar dados
         train_ds = self.data_splitter.load_train_data()
         val_ds = self.data_splitter.load_validation_data()
 
-        # Callbacks para estabilizar treinamento
         callbacks = [
-            # Early stopping monitorando val_loss (mais sensível ao overfitting)
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_loss",
                 patience=15,
@@ -296,18 +258,8 @@ class KerasTunerSearch:
                 verbose=1,
                 min_delta=0.001,
             ),
-            # ReduceLROnPlateau para suavizar oscilações
-            tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_loss",
-                factor=0.5,
-                patience=8,
-                min_lr=1e-7,
-                verbose=1,
-                mode="min",
-            ),
         ]
 
-        # Treinar
         history = model.fit(
             train_ds,
             validation_data=val_ds,
@@ -317,18 +269,20 @@ class KerasTunerSearch:
             verbose=1,
         )
 
-        # Salvar modelo em múltiplos formatos
         output_dir = Path("artifacts/models/mobile")
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # 📊 Salvar visualização da arquitetura do modelo final
-        logger.info("\n" + "=" * 70)
-        logger.info("📊 SALVANDO VISUALIZAÇÃO DA ARQUITETURA")
-        logger.info("=" * 70)
+        self._save_architecture_metadata(model, output_dir)
+        self.save_multiple_formats(
+            model, output_dir, self.model_config.model_name, train_ds
+        )
 
+        self.best_model = model
+        return model, history
+
+    def _save_architecture_metadata(self, model, output_dir):
+        """Gera os metadados textuais e gráficos de visualização técnica do grafo."""
         try:
-
-            # 1. PNG da arquitetura
             architecture_path = (
                 output_dir / f"{self.model_config.model_name}_architecture.png"
             )
@@ -337,56 +291,22 @@ class KerasTunerSearch:
                 to_file=str(architecture_path),
                 show_shapes=True,
                 show_layer_names=True,
-                rankdir="TB",  # Top to Bottom
+                rankdir="TB",
                 expand_nested=True,
                 dpi=150,
                 show_layer_activations=True,
             )
-            arch_size = architecture_path.stat().st_size / 1024
-            logger.info(
-                f"   ✅ Arquitetura PNG: {architecture_path.name} ({arch_size:.1f} KB)"
-            )
 
-            # 2. Summary em texto
             summary_path = output_dir / f"{self.model_config.model_name}_summary.txt"
             with open(summary_path, "w", encoding="utf-8") as f:
                 model.summary(print_fn=lambda x: f.write(x + "\n"))
-            summary_size = summary_path.stat().st_size / 1024
-            logger.info(
-                f"   ✅ Model Summary: {summary_path.name} ({summary_size:.1f} KB)"
-            )
-
-            # 3. Informações detalhadas
-            total_params = model.count_params()
-            trainable_params = sum(
-                [tf.size(w).numpy() for w in model.trainable_weights]
-            )
-            non_trainable_params = sum(
-                [tf.size(w).numpy() for w in model.non_trainable_weights]
-            )
-
-            logger.info(f"\n   📈 Parâmetros do Modelo:")
-            logger.info(f"      Total:          {total_params:,}")
-            logger.info(f"      Treináveis:     {trainable_params:,}")
-            logger.info(f"      Não-treináveis: {non_trainable_params:,}")
-            logger.info("=" * 70 + "\n")
-
         except Exception as e:
-            logger.warning(
-                f"⚠️ Não foi possível salvar visualização da arquitetura: {e}"
-            )
-
-        self.save_multiple_formats(
-            model, output_dir, self.model_config.model_name, train_ds
-        )
-
-        self.best_model = model
-        return model, history
+            logger.warning(f"⚠️ Falha ao salvar artefatos gráficos de arquitetura: {e}")
 
     def save_best_hyperparameters(
         self, model_name: str, save_dir: str = "artifacts/tuning"
     ):
-        """Salva melhores hiperparâmetros em JSON."""
+        """Salva os melhores hiperparâmetros consolidados em formato JSON estruturado."""
         if self.best_hp is None:
             raise ValueError("Execute .search() antes")
 
@@ -396,14 +316,15 @@ class KerasTunerSearch:
         best_params = {
             "learning_rate": float(self.best_hp.get("learning_rate")),
             "dropout_rate": float(self.best_hp.get("dropout_rate")),
+            "top_k_percent": float(
+                self.best_hp.get("top_k_percent")
+            ),  # Registra o Top-K vencedor
         }
 
         if "unfreeze_last_n_layers" in self.best_hp.values:
             best_params["unfreeze_last_n_layers"] = int(
                 self.best_hp.get("unfreeze_last_n_layers")
             )
-
-        # Adicionar L2 se existir (compatibilidade com buscas antigas)
         if "l2_regularization" in self.best_hp.values:
             best_params["l2_regularization"] = float(
                 self.best_hp.get("l2_regularization")
@@ -411,7 +332,6 @@ class KerasTunerSearch:
 
         with open(save_path, "w") as f:
             json.dump(best_params, f, indent=2)
-
         logger.info(f"✅ Hiperparâmetros salvos em: {save_path}")
 
     def save_multiple_formats(
@@ -447,7 +367,59 @@ class KerasTunerSearch:
         # 4. TFLite (mobile/edge) - Com quantização FP16
         logger.info("\n4️⃣ Salvando TFLite (mobile/edge)...")
         try:
-            converter = tf.lite.TFLiteConverter.from_keras_model(model)
+            # --- PATCH PARA PYTHON 3.12 + KERAS 3 INCOMPATIBILIDADE TFLITE ---
+            import inspect
+            try:
+                orig_check_instance = inspect._check_instance
+                def patched_check_instance(obj, attr):
+                    try:
+                        return orig_check_instance(obj, attr)
+                    except TypeError:
+                        return inspect._sentinel
+                inspect._check_instance = patched_check_instance
+            except Exception:
+                pass
+
+            try:
+                from tensorflow.python.util import keras_deps
+                class DummyContextManager:
+                    def __enter__(self): return self
+                    def __exit__(self, exc_type, exc_val, exc_tb): pass
+                class DummyCallContext:
+                    def enter(self, model, inputs, build_graph=False, training=False):
+                        return DummyContextManager()
+                keras_deps.register_call_context_function(lambda: DummyCallContext())
+            except Exception:
+                pass
+            # -----------------------------------------------------------------
+
+            # Reconstruir modelo limpo (sem augmentation/preprocessing_lambda que falham no TFLite)
+            try:
+                input_shape = model.input_shape
+                if isinstance(input_shape, list) and len(input_shape) > 0:
+                    shape_tuple = input_shape[0][1:]
+                else:
+                    shape_tuple = input_shape[1:]
+                    
+                inputs_clean = tf.keras.layers.Input(shape=shape_tuple)
+                x_clean = inputs_clean
+                
+                # Encontrar a camada core_backbone
+                backbone_layer = model.get_layer("core_backbone")
+                x_clean = backbone_layer(x_clean, training=False)
+                
+                # Aplicar camadas subsequentes
+                layer_names = [l.name for l in model.layers]
+                backbone_idx = layer_names.index("core_backbone")
+                for layer in model.layers[backbone_idx + 1:]:
+                    x_clean = layer(x_clean)
+                    
+                clean_model = tf.keras.Model(inputs=inputs_clean, outputs=x_clean)
+                converter = tf.lite.TFLiteConverter.from_keras_model(clean_model)
+            except Exception as e_rebuild:
+                logger.warning(f"   ⚠️ Reconstrução limpa falhou, usando modelo direto: {e_rebuild}")
+                converter = tf.lite.TFLiteConverter.from_keras_model(model)
+
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             converter.target_spec.supported_types = [tf.float16]
 
