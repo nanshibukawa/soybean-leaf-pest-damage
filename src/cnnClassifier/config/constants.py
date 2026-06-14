@@ -25,7 +25,8 @@ DATA_EXTRACT_DIR = DATA_INGESTION_DIR
 # DATA SPLIT
 # =============================================================================
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/bycbh73438-1"
-DATA_SOURCE_DIR = "artifacts/data_ingestion/DatasetPests/Classes/Rotuladas"
+# DATA_SOURCE_DIR = "artifacts/data_ingestion/DatasetPests/Classes/Rotuladas"
+DATA_SOURCE_DIR = "artifacts/data/INSECT12C-cropped-10-classes"
 DATA_SPLIT_DIR = "artifacts/data_split"
 
 # Proporções
