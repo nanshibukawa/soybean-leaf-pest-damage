@@ -34,22 +34,51 @@ class TopKGlobalAveragePooling2D(tf.keras.layers.Layer):
         b, h, w, c = shape[0], shape[1], shape[2], shape[3]
 
         # Achatar as dimensões espaciais
+        # flatten e transposition
         flattened = tf.reshape(inputs, [b, h * w, c])
+        flattened_transposed = tf.transpose(flattened, perm=[0, 2, 1])  # [batch, channels, spatial]
 
         # Calcular o número de elementos 'k' a serem selecionados
         k = tf.cast(tf.cast(h * w, tf.float32) * self.k_percent, tf.int32)
+        k = tf.clip_by_value(k, 1, h * w)
 
         # Encontrar os 'k' maiores valores em cada canal
         # top_k retorna (valores, índices)
-        top_k_values, _ = tf.math.top_k(flattened, k=k, sorted=False)
+        top_k_values, _ = tf.math.top_k(flattened_transposed, k=k, sorted=False)
 
         # Calcular a média apenas desses 'k' valores
-        return tf.reduce_mean(top_k_values, axis=1)
+        return tf.reduce_mean(top_k_values, axis=-1)
 
     def get_config(self):
         config = super(TopKGlobalAveragePooling2D, self).get_config()
         config.update({"k_percent": self.k_percent})
         return config
+
+
+@tf.keras.utils.register_keras_serializable()
+class PreprocessingLayer(tf.keras.layers.Layer):
+    def __init__(self, model_name, **kwargs):
+        super(PreprocessingLayer, self).__init__(**kwargs)
+        self.model_name = model_name  # <-- Salva apenas uma string simples (ex: "inceptionv3")
+        
+        # A busca da função real é feita dinamicamente na inicialização
+        from cnnClassifier.utils.data_utils import get_preprocess_input_dict
+        preprocess_funcs = get_preprocess_input_dict()
+        self.preprocess_func = preprocess_funcs.get(model_name.lower(), None)
+        if self.preprocess_func is None:
+            self.preprocess_func = lambda x: x
+
+    def call(self, inputs):
+        if self.preprocess_func is not None:
+            return self.preprocess_func(inputs)
+        return inputs
+
+    def get_config(self):
+        # O Keras salva apenas o NOME do modelo (string) no arquivo de configuração do modelo
+        config = super(PreprocessingLayer, self).get_config()
+        config.update({"model_name": self.model_name})
+        return config
+
 
 
 class PrepareModel:
@@ -58,7 +87,7 @@ class PrepareModel:
     """
 
     def __init__(
-        self, model_config: ModelConfig = None, image_config: ImageConfig = None
+        self, model_config: ModelConfig, image_config: ImageConfig
     ):
         """
         Inicializa o componente de preparação de modelo.
@@ -129,7 +158,6 @@ class PrepareModel:
             modelo_base, preprocess_layer = ModelFactory.get_pretrained_model(
                 model_name=model_name,
                 input_shape=self.image_config.size_tuple,
-                include_top=False,
                 weights=self.model_config.weights,
             )
 
@@ -145,8 +173,8 @@ class PrepareModel:
         # Aplicar a camada de pré-processamento nativa do Keras devolvida pela Factory
         if preprocess_layer is not None:
             # Emvolvemos a função em uma camada Lambda para salvá-la no grafo .h5
-            x = tf.keras.layers.Lambda(preprocess_layer, name="preprocessing_lambda")(x)
-
+            # x = tf.keras.layers.Lambda(preprocess_layer, name="preprocessing_lambda")(x)
+            x = PreprocessingLayer(model_name=self.model_config.model_name, name="preprocessing_layer")(x)
         # IMPORTANTE: Chamar modelo base com training=False para manter BatchNormalization em modo de inferência
         # Isto é crítico durante fine-tuning: impede que as estatísticas armazenadas (mean/variance)
         # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
