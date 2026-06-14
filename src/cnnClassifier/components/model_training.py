@@ -66,7 +66,7 @@ class ModelTraining:
                 for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
                     layer.trainable = False
                 for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                    if not isinstance(layer, tf.keras.BatchNormalization):
+                    if not isinstance(layer, tf.keras.layers.BatchNormalization):
                         layer.trainable = True
                     else:
                         layer.trainable = False
@@ -77,12 +77,15 @@ class ModelTraining:
             self._compile_model()
 
             logger.info("Iniciando fit do modelo...")
+            class_weight = self.model_config.class_weights
+            logger.info(f"🔍 DEBUG class_weights injetados no fit: {class_weight}")
+
             self.history = self.model.fit(
                 train_data,
                 validation_data=validation_data,
                 epochs=self.model_config.epochs,
                 callbacks=self._callbacks(),
-                class_weight=self.model_config.class_weights,
+                class_weight=class_weight,
                 verbose=1,
             )
             return self.history
@@ -141,12 +144,16 @@ class ModelTraining:
         }
 
     def _compile_model(self):
+        loss_function = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(
                 learning_rate=self.model_config.learning_rate,
                 epsilon=1e-7,
             ),
-            loss=self.model_config.loss_function,
+            # loss=self.model_config.loss_function,
+            loss=loss_function,
             metrics=self.model_config.metrics,
         )
+        logger.info(f"📉 Loss function: {loss_function}")
+
         logger.info("Modelo Adam recompilado com configurações de treinamento")

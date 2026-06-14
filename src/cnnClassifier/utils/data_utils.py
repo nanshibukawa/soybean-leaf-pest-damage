@@ -2,6 +2,7 @@ import zipfile
 from pathlib import Path
 import gdown
 from cnnClassifier.utils.logger import configure_logger
+import tensorflow as tf
 
 logger = configure_logger(__name__)
 
@@ -9,18 +10,18 @@ logger = configure_logger(__name__)
 def download_from_gdrive(url: str, output_path: Path) -> Path:
     """Baixa arquivo do Google Drive"""
     if output_path.exists():
-        non_zip_items = [item for item in output_path.parent.iterdir() 
-                if item.name.endswith('.zip')]
+        non_zip_items = [
+            item for item in output_path.parent.iterdir() if item.name.endswith(".zip")
+        ]
 
         if non_zip_items:
             logger.debug(f"Arquivo já existe: {output_path.name})")
             return output_path
 
-    
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    
+
     logger.info(f"Baixando: {url}")
-    
+
     try:
         # Método 1: URL direta com fuzzy matching
         gdown.download(url, str(output_path), quiet=False, fuzzy=True)
@@ -37,23 +38,25 @@ def download_from_gdrive(url: str, output_path: Path) -> Path:
         except Exception as e2:
             logger.error(f"Ambos os métodos falharam: {e2}")
             raise e2
-            
+
     logger.info("✅ Download completo!")
     return output_path
+
 
 def extract_zip(zip_path: Path, extract_to: Path) -> Path:
     if extract_to.exists():
         # Lista apenas arquivos/pastas que NÃO sejam .zip
-        non_zip_items = [item for item in extract_to.iterdir() 
-                        if not item.name.endswith('.zip')]
-        
+        non_zip_items = [
+            item for item in extract_to.iterdir() if not item.name.endswith(".zip")
+        ]
+
         if non_zip_items:
             logger.debug(f"{zip_path.name} já extraído ({len(non_zip_items)} items)")
             return extract_to
-    
+
     try:
         logger.info(f"Extraindo arquivo de {zip_path} para {extract_to}...")
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_to)
         logger.info("✅ Extração completa!")
         return extract_to
@@ -61,15 +64,59 @@ def extract_zip(zip_path: Path, extract_to: Path) -> Path:
         logger.error(f"Erro ao extrair ZIP: {e}")
         raise
 
+
 def create_dirs(*paths: Path) -> None:
     for path in paths:
         path.mkdir(parents=True, exist_ok=True)
 
+
 def log_gpu_info():
-    gpus = tf.config.list_physical_devices('GPU')
+    gpus = tf.config.list_physical_devices("GPU")
     if gpus:
         logger.debug("✅ GPU detectada")
         for gpu in gpus:
             logger.debug(f" - {gpu}")
     else:
         logger.debug("❌ Nenhuma GPU detectada")
+
+
+def register_preprocess_input(model_name: str):
+    import tensorflow as tf
+
+    model_name_lower = model_name.lower()
+
+    preprocess_funcs = get_preprocess_input_dict()
+
+    # Se o modelo for None (como EfficientNetV2) ou não listado, usamos um fallback inofensivo lambda x: x
+    preprocess_func = preprocess_funcs.get(model_name_lower, None)
+    if preprocess_func is None:
+        preprocess_func = lambda x: x
+
+    tf.keras.utils.get_custom_objects()["preprocess_input"] = preprocess_func
+    logger.info(f"✅ Registered preprocess_input for model: {model_name}")
+
+
+def get_preprocess_input_dict() -> dict:
+    """
+    Retorna o dicionário de mapeamento de funções de pré-processamento
+    nativas de cada arquitetura do Keras.
+    """
+    return {
+        "mobilenetv3large": tf.keras.applications.mobilenet_v3.preprocess_input,
+        "mobilenetv3small": tf.keras.applications.mobilenet_v3.preprocess_input,
+        "inceptionv3": tf.keras.applications.inception_v3.preprocess_input,
+        "vgg19": tf.keras.applications.vgg19.preprocess_input,
+        "nasnetlarge": tf.keras.applications.nasnet.preprocess_input,
+        "nasnetmobile": tf.keras.applications.nasnet.preprocess_input,
+        "efficientnetb0": tf.keras.applications.efficientnet.preprocess_input,
+        "efficientnetb1": tf.keras.applications.efficientnet.preprocess_input,
+        "efficientnetb2": tf.keras.applications.efficientnet.preprocess_input,
+        "efficientnetb3": tf.keras.applications.efficientnet.preprocess_input,
+        "efficientnetb7": tf.keras.applications.efficientnet.preprocess_input,
+        "efficientnetv2b0": None,
+        "efficientnetv2b1": None,
+        "efficientnetv2b2": None,
+        "efficientnetv2b3": None,
+        "convnexttiny": tf.keras.applications.convnext.preprocess_input,
+        "convnextsmall": tf.keras.applications.convnext.preprocess_input,
+    }

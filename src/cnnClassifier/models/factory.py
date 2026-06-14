@@ -4,6 +4,7 @@ from cnnClassifier.models.mobilevit_v2 import create_mobilevit_custom
 
 import tensorflow as tf
 from cnnClassifier.utils.logger import configure_logger
+from cnnClassifier.utils.data_utils import get_preprocess_input_dict
 
 logger = configure_logger(__name__)
 
@@ -81,25 +82,7 @@ class ModelFactory:
             modelo_base._name = "core_backbone"
 
         # Tabela de funções de preprocessamento originais Keras
-        preprocess_input_dict = {
-            "mobilenetv3large": None,
-            "mobilenetv3small": None,
-            "inceptionv3": tf.keras.applications.inception_v3.preprocess_input,
-            "vgg19": tf.keras.applications.vgg19.preprocess_input,
-            "nasnetlarge": tf.keras.applications.nasnet.preprocess_input,
-            "nasnetmobile": tf.keras.applications.nasnet.preprocess_input,
-            "efficientnetb0": tf.keras.applications.efficientnet.preprocess_input,
-            "efficientnetb1": tf.keras.applications.efficientnet.preprocess_input,
-            "efficientnetb2": tf.keras.applications.efficientnet.preprocess_input,
-            "efficientnetb3": tf.keras.applications.efficientnet.preprocess_input,
-            "efficientnetb7": tf.keras.applications.efficientnet.preprocess_input,
-            "efficientnetv2b0": None,
-            "efficientnetv2b1": None,
-            "efficientnetv2b2": None,
-            "efficientnetv2b3": None,
-            "convnexttiny": tf.keras.applications.convnext.preprocess_input,
-            "convnextsmall": tf.keras.applications.convnext.preprocess_input,
-        }
+        preprocess_input_dict = get_preprocess_input_dict()
 
         preprocess_func = preprocess_input_dict.get(model_name_lower, None)
 

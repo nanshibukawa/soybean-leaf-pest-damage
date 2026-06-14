@@ -71,6 +71,9 @@ class ModelConfig(BaseModel):
     l2_regularization: float = Field(
         default=0.01, description="L2 regularization para camadas Dense"
     )
+    top_k_percent: float = Field(
+        ..., description="Encontrar os 'k' maiores valores em cada canal"
+    )
 
     # Model head options
     use_compression_blocks: bool = Field(
@@ -235,6 +238,7 @@ class ModelConfig(BaseModel):
                     "use_compression_blocks", True
                 ),
                 use_se_block=config["model"].get("use_se_block", True),
+                top_k_percent=config["training"].get("top_k_percent", 0.15),
                 # use_data_augmentation=config["model"].get(
                 #     "use_data_augmentation", True
                 # ),

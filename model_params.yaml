@@ -18,15 +18,17 @@ image:
   size: [224, 224, 3]
 
 training:
-  batch_size: 32
-  epochs: 10
+  batch_size: 64
+  epochs: 50
   dropout_rate: 0.4
-  loss: "sparse_categorical_crossentropy"
+  # loss: "sparse_categorical_crossentropy"
+  loss: "categorical_crossentropy"
   metrics: ["accuracy"]
-  class_weights:
-    0: 0.7
-    1: 1.0
-    2: 3.5
+  top_k_percent: 0.15
+  # class_weights:
+  #   0: 0.7
+  #   1: 1.0
+  #   2: 3.5
 
 optimizer:
   name: "adam" 
@@ -41,12 +43,14 @@ augmentation:
   enabled: true
   horizontal_flip: true
   rotation_factor: 0.05
-  zoom_factor: 0.05
+  zoom_factor: 0.1
   rotation_range: 20
-  brightness_range: [0.8, 1.2]
+  brightness_range: [-0.1, 0.1]
+  # brightness_range:  0.1
+
   zoom_range: [0.9, 1.1]
-  contrast_range: [0.1, 1.1]
-  gaussian_noise: 0.05
+  contrast_range: [0.8, 1.2]
+  gaussian_noise: 0.01
   
   # Augmentation específico por classe (DESABILITADO por padrão)
   # Útil para classes desbalanceadas - aplica augmentation mais agressivo em classes minoritárias
@@ -54,18 +58,18 @@ augmentation:
   # class_specific:
   #   "Healthy":  # Classe 2 - minoritária (176 amostras)
   #     rotation_range: 45
-  #     brightness_range: [0.6, 1.4]
+      # brightness_range: [0.05, 0.1]
   #     zoom_range: [0.7, 1.3]
   #     contrast_range: [0.1, 1.1]
   #     gaussian_noise: 0.05
   #   "Diabrotica":  # Classe 1 - intermediária (468 amostras)
   #     rotation_range: 25
-  #     brightness_range: [0.75, 1.25]
+  #     brightness_range: [0.05, 0.1]
   #     zoom_range: [0.85, 1.15]
   #   "Caterpillar":  # Classe 0 - majoritária (638 amostras) - augmentation padrão
 
 dataset:
-  classes: 3
+  classes: 10
   train_ratio: 0.8
   val_ratio: 0.1
   test_ratio: 0.1
@@ -73,15 +77,15 @@ dataset:
 tuning:
 
   max_trials: 10
-  epochs_per_trial: 50
-  final_epochs: 200
+  epochs_per_trial: 40
+  final_epochs: 150
   search_space:
     mobilenetv3large:
       learning_rate:
         min_value: 1e-4
-        max_value: 4e-4
+        max_value: 5e-2
         sampling: "log"
-        default: 2e-4
+        default: 2e-3
       dropout_rate:
         min_value: 0.0
         max_value: 0.3
@@ -97,6 +101,11 @@ tuning:
         max_value: 40
         step: 4
         default: 32
+      top_k_percent:
+        min_value: 0.05
+        max_value: 0.2
+        step: 0.02
+        default: 0.15
 
     mobilenetv3small:
       learning_rate:
@@ -105,10 +114,10 @@ tuning:
         sampling: "log"
         default: 2e-4
       dropout_rate:
-        min_value: 0.3
-        max_value: 0.5
+        min_value: 0.0
+        max_value: 0.3
         step: 0.05
-        default: 0.4
+        default: 0.2
       l2_regularization:
         min_value: 1e-3
         max_value: 1e-2
@@ -515,13 +524,13 @@ experiments:
     image:
       size: [224, 224, 3]
     training:
-      batch_size: 32
+      batch_size: 128
       epochs: 150
-      dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      dropout_rate: 0.2
+      # class_weights:  # COMENTADO PARA EVITAR MODE COLLAPSE
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.0
     optimizer:
       learning_rate: 0.0001
 
@@ -540,11 +549,14 @@ experiments:
     training:
       batch_size: 32
       epochs: 150
-      dropout_rate: 0.3
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      dropout_rate: 0.2
+      # class_weights: # COMENTADO PARA EVITAR MODE COLLAPSE
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
+        # 0: 1
+        # 1: 1
+        # 2: 1
     optimizer:
       learning_rate: 0.0001
 
@@ -564,10 +576,10 @@ experiments:
       batch_size: 8  # Reduzido devido ao tamanho da imagem
       epochs: 100
       dropout_rate: 0.5
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00005  # LR menor para modelo maior
 
@@ -587,10 +599,10 @@ experiments:
       batch_size: 32  # Modelo pesado
       epochs: 100
       dropout_rate: 0.5
-      class_weights:
-        0: 1.0
-        1: 1.0
-        2: 2.5
+      # class_weights:
+      #   0: 1.0
+      #   1: 1.0
+      #   2: 2.5
     optimizer:
       learning_rate: 0.00005
 
@@ -610,10 +622,10 @@ experiments:
       batch_size: 8
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -633,10 +645,10 @@ experiments:
       batch_size: 16
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -656,10 +668,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -679,10 +691,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -702,10 +714,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -725,10 +737,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -748,10 +760,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -771,10 +783,10 @@ experiments:
       batch_size: 16  # Reduzido devido ao tamanho
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -794,10 +806,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -817,10 +829,10 @@ experiments:
       batch_size: 16  # Reduzido devido ao tamanho
       epochs: 120
       dropout_rate: 0.45
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -841,10 +853,10 @@ experiments:
       batch_size: 8  # Muito pesado
       epochs: 150
       dropout_rate: 0.5
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       # learning_rate: 0.00003  # LR bem menor
       learning_rate: 0.0001
@@ -865,10 +877,10 @@ experiments:
       batch_size: 32
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 
@@ -888,10 +900,10 @@ experiments:
       batch_size: 8  # Muito pesado
       epochs: 80
       dropout_rate: 0.5
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00003
 
@@ -911,16 +923,17 @@ experiments:
       batch_size: 32
       epochs: 300
       dropout_rate: 0.4
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     augmentation:
       enabled: true
       horizontal_flip: true
       rotation_range: 45
-      brightness_range: [0.6, 1.4]
-      zoom_range: [0.7, 1.3]
+      brightness_range: [0.05, 0.1]
+      zoom_range: [0.9, 1.1]
+
       contrast_range: [0.1, 1.1]
       gaussian_noise: 0.05
     optimizer:
@@ -943,10 +956,10 @@ experiments:
       batch_size: 16
       epochs: 50
       dropout_rate: 0.3
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
 
@@ -966,10 +979,10 @@ experiments:
       batch_size: 16
       epochs: 50
       dropout_rate: 0.3
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
 
@@ -987,10 +1000,10 @@ experiments:
       batch_size: 16
       epochs: 50
       dropout_rate: 0.3
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
 
@@ -1012,10 +1025,10 @@ experiments:
       batch_size: 16
       epochs: 50
       dropout_rate: 0.3
-      class_weights:
-        0: 0.7
-        1: 1.0
-        2: 3.5
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.00005 # ViTs quebram com LR alto, melhor usar valores baixos
 
@@ -1052,13 +1065,13 @@ tuning_results:
       enabled: true
       horizontal_flip: true
       rotation_range: 20.0
-      brightness_range: [0.8, 1.2]
+      brightness_range: [0.05, 0.1]
       contrast_range: [0.1, 1.1]
       zoom_range: [0.9, 1.1]
-    class_weights:
-      caterpillar: 0.7
-      diabrotica_speciosa: 1.0
-      healthy: 3.5
+    # class_weights:
+    #   caterpillar: 0.7
+    #   diabrotica_speciosa: 1.0
+    #   healthy: 3.5
     image_size: [224, 224, 3]
     logging: mlflow_enabled
     date: "2026-02-28"
@@ -1090,13 +1103,13 @@ tuning_results:
       enabled: true
       horizontal_flip: true
       rotation_range: 20.0
-      brightness_range: [0.8, 1.2]
+      brightness_range: [0.05, 0.1]
       contrast_range: [0.1, 1.1]
       zoom_range: [0.9, 1.1]
-    class_weights:
-      caterpillar: 0.7
-      diabrotica_speciosa: 1.0
-      healthy: 3.5
+    # class_weights:
+    #   caterpillar: 0.7
+    #   diabrotica_speciosa: 1.0
+    #   healthy: 3.5
     image_size: [224, 224, 3]
     logging: mlflow_enabled
     date: "2026-02-28"
