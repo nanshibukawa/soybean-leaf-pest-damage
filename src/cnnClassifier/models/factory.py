@@ -20,7 +20,7 @@ class ModelFactory:
         model_name: str,
         input_shape: tuple,
         include_top: bool = False,
-        weights: str = "imagenet",
+        weights: str | None = "imagenet",
     ):
         models = {
             "mobilenetv3large": tf.keras.applications.MobileNetV3Large,
