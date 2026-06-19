@@ -77,8 +77,8 @@ class ModelTraining:
             self._compile_model()
 
             logger.info("Iniciando fit do modelo...")
-            # class_weight = self.model_config.class_weights
-            # logger.info(f"🔍 DEBUG class_weights injetados no fit: {class_weight}")
+            # class_weight = class_weights or self.model_config.class_weights
+            # logger.info(f"🔍 class_weights injetados no fit: {class_weight}")
 
             self.history = self.model.fit(
                 train_data,

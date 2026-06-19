@@ -11,7 +11,7 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 
-from cnnClassifier.config.constants import DATA_SOURCE_DIR
+from cnnClassifier.config.constants import DATA_SOURCE_DIR, DATA_TEST_DIR
 from cnnClassifier.entity.config_entity import (
     DataSplitterConfig,
     ImageConfig,
@@ -39,10 +39,12 @@ class DataSplitter:
     image_config: ImageConfig
     subset: DataSubsetType
     _cached_splits: tuple = field(default=None, init=False, repr=False)
+    class_names: list = field(default_factory=list, init=False)
 
     def _load_all_splits(self):
         """
         Carrega dataset completo e divide em treino/validação/teste usando take/skip.
+        Ou carrega diretamente as pastas 'train' e 'val' se existirem no diretório.
         Isso é feito uma única vez para eficiência.
 
         Returns:
@@ -51,41 +53,89 @@ class DataSplitter:
         if self._cached_splits is not None:
             logger.debug("♻️ Usando splits em cache")
             return self._cached_splits
-        # Carregar dataset completo
-        full_dataset = tf.keras.utils.image_dataset_from_directory(
-            directory=self.image_config.data_dir,
-            label_mode="categorical",
-            shuffle=True,
-            seed=self.data_split_config.random_seed,
-            image_size=(self.image_config.altura, self.image_config.largura),
-            batch_size=self.data_split_config.batch_size,
-        )
 
-        # Calculo do tamanho (em batches)
-        dataset_size_batches = tf.data.experimental.cardinality(full_dataset).numpy()
-        train_batches = int(dataset_size_batches * self.data_split_config.train_ratio)
-        val_batches = int(dataset_size_batches * self.data_split_config.val_ratio)
-        test_batches = int(dataset_size_batches * self.data_split_config.test_ratio)
+        train_dir = Path(self.image_config.data_dir) / "train"
+        val_dir = Path(self.image_config.data_dir) / "val"
 
-        # Calcular número de imagens (aproximado)
-        batch_size = self.data_split_config.batch_size
-        train_images = train_batches * batch_size
-        val_images = val_batches * batch_size
-        test_images = test_batches * batch_size
+        if train_dir.exists() and val_dir.exists():
+            logger.info(f"📂 Detectado dataset pré-dividido em: {self.image_config.data_dir}")
+            
+            # Carregar treino
+            train_data = tf.keras.utils.image_dataset_from_directory(
+                directory=train_dir,
+                label_mode="categorical",
+                shuffle=True,
+                seed=self.data_split_config.random_seed,
+                image_size=(self.image_config.altura, self.image_config.largura),
+                batch_size=self.data_split_config.batch_size,
+            )
+            self.class_names = train_data.class_names
 
-        # Dividir: treino | validação | teste
-        train_data = full_dataset.take(train_batches)
-        remaining = full_dataset.skip(train_batches)
-        validation_data = remaining.take(val_batches)
-        test_data = remaining.skip(val_batches)
+            # Carregar validação
+            validation_data = tf.keras.utils.image_dataset_from_directory(
+                directory=val_dir,
+                label_mode="categorical",
+                shuffle=False,  # Validação não precisa shuffle
+                class_names=self.class_names,  # Garante mesmo mapeamento de classes
+                image_size=(self.image_config.altura, self.image_config.largura),
+                batch_size=self.data_split_config.batch_size,
+            )
 
-        self._cached_splits = (train_data, validation_data, test_data)
+            # Teste padrão é o de validação (usado se não houver test_dir externo)
+            test_data = validation_data
 
-        logger.info(
-            f"📊 Divisão: Train={train_images} imgs ({self.data_split_config.train_ratio*100:.0f}%) | "
-            f"Val={val_images} ({self.data_split_config.val_ratio*100:.0f}%) | "
-            f"Test={test_images} ({self.data_split_config.test_ratio*100:.0f}%)"
-        )
+            train_batches = tf.data.experimental.cardinality(train_data).numpy()
+            val_batches = tf.data.experimental.cardinality(validation_data).numpy()
+            
+            batch_size = self.data_split_config.batch_size
+            train_images = train_batches * batch_size
+            val_images = val_batches * batch_size
+
+            self._cached_splits = (train_data, validation_data, test_data)
+
+            logger.info(
+                f"📊 Dataset Pré-Dividido Carregado: Train={train_images} imgs (aprox, {train_batches} batches) | "
+                f"Val={val_images} imgs (aprox, {val_batches} batches)"
+            )
+        else:
+            logger.info(f"📂 Carregando dataset único e realizando divisão dinâmica: {self.image_config.data_dir}")
+            # Carregar dataset completo
+            full_dataset = tf.keras.utils.image_dataset_from_directory(
+                directory=self.image_config.data_dir,
+                label_mode="categorical",
+                shuffle=True,
+                seed=self.data_split_config.random_seed,
+                image_size=(self.image_config.altura, self.image_config.largura),
+                batch_size=self.data_split_config.batch_size,
+            )
+            self.class_names = full_dataset.class_names
+
+            # Calculo do tamanho (em batches)
+            dataset_size_batches = tf.data.experimental.cardinality(full_dataset).numpy()
+            train_batches = int(dataset_size_batches * self.data_split_config.train_ratio)
+            val_batches = int(dataset_size_batches * self.data_split_config.val_ratio)
+            test_batches = int(dataset_size_batches * self.data_split_config.test_ratio)
+
+            # Calcular número de imagens (aproximado)
+            batch_size = self.data_split_config.batch_size
+            train_images = train_batches * batch_size
+            val_images = val_batches * batch_size
+            test_images = test_batches * batch_size
+
+            # Dividir: treino | validação | teste
+            train_data = full_dataset.take(train_batches)
+            remaining = full_dataset.skip(train_batches)
+            validation_data = remaining.take(val_batches)
+            test_data = remaining.skip(val_batches)
+
+            self._cached_splits = (train_data, validation_data, test_data)
+
+            logger.info(
+                f"📊 Divisão Dinâmica: Train={train_images} imgs ({self.data_split_config.train_ratio*100:.0f}%) | "
+                f"Val={val_images} ({self.data_split_config.val_ratio*100:.0f}%) | "
+                f"Test={test_images} ({self.data_split_config.test_ratio*100:.0f}%)"
+            )
+            
         return self._cached_splits
 
     def load_train_data(self):
@@ -111,10 +161,34 @@ class DataSplitter:
         _, validation_data, _ = self._load_all_splits()
         return validation_data
 
+    # def load_test_data(self):
+    #     """Carrega dados de teste para avaliação final"""
+    #     _, _, test_data = self._load_all_splits()
+    #     return test_data
+
     def load_test_data(self):
         """Carrega dados de teste para avaliação final"""
-        _, _, test_data = self._load_all_splits()
-        return test_data
+        test_dir = Path("artifacts/data/INSECT12C-cropped-10-classes")
+        if test_dir.exists():
+            logger.info(f"🧪 Carregando dataset de teste externo de: {test_dir}")
+            
+            # Garante que os splits principais foram gerados para carregar a ordem exata das classes
+            if not self.class_names:
+                self._load_all_splits()
+                
+            return tf.keras.utils.image_dataset_from_directory(
+                directory=test_dir,
+                label_mode="categorical",
+                class_names=self.class_names,  # Garante mesmo mapeamento de classes e ignora pastas com sufixos
+                shuffle=False,
+                image_size=(self.image_config.altura, self.image_config.largura),
+                batch_size=self.data_split_config.batch_size,
+            )
+        else:
+            logger.warning(f"⚠️ Diretório de teste {test_dir} não encontrado. Usando split original.")
+            _, _, test_data = self._load_all_splits()
+            return test_data
+
 
     def load_all_splits(self):
         """Retorna os 3 splits de uma vez (mais eficiente se precisa de todos)"""
@@ -124,8 +198,15 @@ class DataSplitter:
         """Calcula a distribuição por classe em train/val/test."""
         train_data, validation_data, test_data = self._load_all_splits()
 
+        train_dir = Path(self.image_config.data_dir) / "train"
+        val_dir = Path(self.image_config.data_dir) / "val"
+        if train_dir.exists() and val_dir.exists():
+            class_dir = train_dir
+        else:
+            class_dir = Path(self.image_config.data_dir)
+
         class_names = tf.keras.utils.image_dataset_from_directory(
-            directory=self.image_config.data_dir,
+            directory=class_dir,
             shuffle=False,
             image_size=(self.image_config.altura, self.image_config.largura),
             batch_size=1,
@@ -161,6 +242,30 @@ class DataSplitter:
             "validation": summarize(validation_data),
             "test": summarize(test_data),
         }
+
+    # def get_class_weights(self):
+    #     """Calcula pesos de classe baseados na distribuição do conjunto de treino."""
+    #     dist = self.get_class_distribution()
+    #     train_stats = dist["train"]
+    #     total = train_stats["total"]
+    #     counts = train_stats["counts"]
+    #     class_names = dist["class_names"]
+    #     num_classes = len(class_names)
+    # 
+    #     class_weights = {}
+    #     for idx, class_name in enumerate(class_names):
+    #         count = counts[class_name]
+    #         if count > 0:
+    #             # Fórmula padrão: total / (num_classes * count)
+    #             weight = total / (num_classes * count)
+    #         else:
+    #             weight = 1.0
+    #         class_weights[idx] = float(weight)
+    # 
+    #     logger.info(f"⚖️ Pesos de classe dinâmicos calculados: {class_weights}")
+    #     return class_weights
+
+
 
 
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ def main():
         # model_config = ModelConfig.from_yaml(config_path="model_params.yaml")
         # model_config = ModelConfig.from_yaml("model_params.yaml", experiment="vgg_transfer")
         model_config = ModelConfig.from_yaml(
-            "model_params.yaml", experiment="mobilenet"
+            "model_params.yaml", experiment="mobilenetv3large"
         )
 
         logger.info(f"✅ Configuração carregada: {model_config.model_name}")
@@ -103,6 +103,7 @@ def main():
                 validation_data=stage2_result["validation_data"],
                 model=stage4_result["model"],
                 history=stage4_result.get("history"),
+                prefix="val_evaluation",
             )
 
             if stage5_result["success"]:

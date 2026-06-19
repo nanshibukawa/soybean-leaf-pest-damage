@@ -57,6 +57,8 @@ class DataSplittingPipeline:
             validation_data = data_splitter.load_validation_data()
             test_data = data_splitter.load_test_data()
 
+            # class_weights = data_splitter.get_class_weights()
+
             logger.info("Dados de treino e validação carregados com sucesso.")
 
             return {
@@ -64,6 +66,7 @@ class DataSplittingPipeline:
                 "train_data": train_data,
                 "validation_data": validation_data,
                 "test_data": test_data,
+                # "class_weights": class_weights,
             }
         except Exception as e:
             logger.error(f"❌ Erro no pipeline de divisão: {e}")

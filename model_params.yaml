@@ -42,15 +42,15 @@ optimizer:
 augmentation:
   enabled: true
   horizontal_flip: true
-  rotation_factor: 0.05
-  zoom_factor: 0.1
-  rotation_range: 20
-  brightness_range: [-0.1, 0.1]
+  rotation_factor: 0.15
+  zoom_factor: 0.2
+  rotation_range: 45
+  brightness_range: [-0.2, 0.2]
   # brightness_range:  0.1
 
-  zoom_range: [0.9, 1.1]
-  contrast_range: [0.8, 1.2]
-  gaussian_noise: 0.01
+  zoom_range: [0.8, 1.2]
+  contrast_range: [0.6, 1.4]
+  gaussian_noise: 0.03
   
   # Augmentation específico por classe (DESABILITADO por padrão)
   # Útil para classes desbalanceadas - aplica augmentation mais agressivo em classes minoritárias
@@ -70,9 +70,9 @@ augmentation:
 
 dataset:
   classes: 10
-  train_ratio: 0.8
+  train_ratio: 0.9
   val_ratio: 0.1
-  test_ratio: 0.1
+  test_ratio: 0.0
 
 tuning:
 
@@ -524,7 +524,7 @@ experiments:
     image:
       size: [224, 224, 3]
     training:
-      batch_size: 128
+      batch_size: 64
       epochs: 150
       dropout_rate: 0.2
       # class_weights:  # COMENTADO PARA EVITAR MODE COLLAPSE
@@ -549,7 +549,7 @@ experiments:
     training:
       batch_size: 32
       epochs: 150
-      dropout_rate: 0.2
+      dropout_rate: 0.35
       # class_weights: # COMENTADO PARA EVITAR MODE COLLAPSE
       #   0: 0.7
       #   1: 1.0

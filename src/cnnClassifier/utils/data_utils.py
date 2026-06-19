@@ -44,20 +44,17 @@ def download_from_gdrive(url: str, output_path: Path) -> Path:
 
 
 def extract_zip(zip_path: Path, extract_to: Path) -> Path:
-    if extract_to.exists():
-        # Lista apenas arquivos/pastas que NÃO sejam .zip
-        non_zip_items = [
-            item for item in extract_to.iterdir() if not item.name.endswith(".zip")
-        ]
-
-        if non_zip_items:
-            logger.debug(f"{zip_path.name} já extraído ({len(non_zip_items)} items)")
-            return extract_to
+    sentinel = extract_to / f".{zip_path.name}.extracted"
+    if sentinel.exists():
+        logger.debug(f"{zip_path.name} já extraído (marcador encontrado)")
+        return extract_to
 
     try:
         logger.info(f"Extraindo arquivo de {zip_path} para {extract_to}...")
+        extract_to.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_to)
+        sentinel.touch()
         logger.info("✅ Extração completa!")
         return extract_to
     except Exception as e:

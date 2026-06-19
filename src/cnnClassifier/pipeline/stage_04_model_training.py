@@ -57,9 +57,11 @@ class ModelTrainingPipeline:
             trainer = ModelTraining(model, self.config)
 
             # Treina modelo
+            # class_weights = stage2_result.get("class_weights")
             history = trainer.train_model(
                 train_data=stage2_result["train_data"],
                 validation_data=stage2_result["validation_data"],
+                # class_weights=class_weights,
             )
 
             # Salva modelo treinado
