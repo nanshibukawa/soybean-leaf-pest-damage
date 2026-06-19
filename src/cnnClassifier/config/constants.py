@@ -13,10 +13,9 @@ LOCAL_DATA_DIR = ARTIFACTS_DIR / "data"
 # DATA INGESTION
 # =============================================================================
 SOURCE_URL = (
-    # "https://drive.google.com/file/d/1tQc-PGonSVSDtfL4HEsd30klq0gXxjqP/view?usp=sharing" #Soybean leaf pest damage
-    "https://drive.google.com/file/d/1fTCJtVkgFO5eUvjVNnbsYri5RCDYVRdW/view?usp=drive_link"  # Pest image
+    "https://drive.google.com/file/d/1tEAsHPKwjlm88zLjA9UxRg5_MeLGX2mL/view?usp=sharing"  # INSECT12C-cropped-10-classes dataset
 )
-DATA_INGESTION_DIR = ARTIFACTS_DIR / "data_ingestion"
+DATA_INGESTION_DIR = ARTIFACTS_DIR / "data"
 DATA_ZIP_FILE = DATA_INGESTION_DIR / "data.zip"
 DATA_EXTRACT_DIR = DATA_INGESTION_DIR
 
@@ -26,13 +25,15 @@ DATA_EXTRACT_DIR = DATA_INGESTION_DIR
 # =============================================================================
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/bycbh73438-1"
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/DatasetPests/Classes/Rotuladas"
-DATA_SOURCE_DIR = "artifacts/data/INSECT12C-cropped-10-classes"
+# DATA_SOURCE_DIR = "artifacts/data_ingestion/INSECT12C-cropped-10-classes"
+DATA_SOURCE_DIR = "artifacts/data/DatasetPests-balanced"
+DATA_TEST_DIR = "artifacts/data/INSECT12C-cropped-10-classes"
 DATA_SPLIT_DIR = "artifacts/data_split"
 
 # Proporções
-TRAIN_RATIO = 0.7
-VALIDATION_RATIO = 0.2
-TEST_RATIO = 0.1
+TRAIN_RATIO = 0.9
+VALIDATION_RATIO = 0.1
+TEST_RATIO = 0.0
 
 # Parâmetros
 RANDOM_STATE = 42

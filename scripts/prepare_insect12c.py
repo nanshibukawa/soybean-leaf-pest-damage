@@ -23,18 +23,18 @@ OUTPUT_10_CLASSES_DIR = ROOT_DIR / "artifacts/data/INSECT12C-cropped-10-classes"
 # 10-class mapping to match the current pipeline (DatasetPests structure)
 # Maps the 12 classes of INSECT12C to the 10 folders expected in the current pipeline.
 CLASS_MAPPING_10 = {
-    "Anticarsia_gemmatalis": "anticarsia_gemmatalis-larva_final_shido",
-    "Coccinellidae": "coccinellidae_shido",
-    "Diabrotica_speciosa": "diabrotica_speciosa_final",
-    "Edessa_meditabunda": "edessa_meditabunda_final",
-    "Euschistus_heros_adulto": "euschistus_heros_final",
-    "Euschistus_heros_ninfa": "euschistus_heros_final",
-    "Gastropoda": "gastropoda_final",
-    "Lagria_villosa": "lagria_villosa_final",
-    "Nezara_viridula_adulto": "nezara_viridula_final",
-    "Nezara_viridula_ninfa": "nezara_viridula_final",
-    "Rhammatocerus_schistocercoides": "rhammatocerus_schistocercoides_final",
-    "Spodoptera_albula": "spodoptera_albula_final",
+    "Anticarsia_gemmatalis": "anticarsia_gemmatalis-larva",
+    "Coccinellidae": "coccinellidae",
+    "Diabrotica_speciosa": "diabrotica_speciosa",
+    "Edessa_meditabunda": "edessa_meditabunda",
+    "Euschistus_heros_adulto": "euschistus_heros",
+    "Euschistus_heros_ninfa": "euschistus_heros",
+    "Gastropoda": "gastropoda",
+    "Lagria_villosa": "lagria_villosa",
+    "Nezara_viridula_adulto": "nezara_viridula",
+    "Nezara_viridula_ninfa": "nezara_viridula",
+    "Rhammatocerus_schistocercoides": "rhammatocerus_schistocercoides",
+    "Spodoptera_albula": "spodoptera_albula",
 }
 
 def extract_zips():

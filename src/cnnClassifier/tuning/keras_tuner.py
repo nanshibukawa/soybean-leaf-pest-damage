@@ -202,6 +202,8 @@ class KerasTunerSearch:
         train_ds = self.data_splitter.load_train_data()
         val_ds = self.data_splitter.load_validation_data()
 
+        # class_weights = self.data_splitter.get_class_weights()
+        # logger.info(f"⚖️ Injetando class_weights na busca do Tuner: {class_weights}")
         self.tuner.search(
             train_ds,
             validation_data=val_ds,
@@ -258,6 +260,8 @@ class KerasTunerSearch:
             ),
         ]
 
+        # class_weights = self.data_splitter.get_class_weights()
+        # logger.info(f"⚖️ Injetando class_weights no retreino do Tuner: {class_weights}")
         history = model.fit(
             train_ds,
             validation_data=val_ds,
