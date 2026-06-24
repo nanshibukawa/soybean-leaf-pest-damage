@@ -16,9 +16,9 @@ from cnnClassifier.utils.logger import configure_logger
 logger = configure_logger("prepare_dataset_pests")
 
 # Base directories
-ROOT_DIR = Path(__file__).parent.parent
+ROOT_DIR = Path(__file__).parent.parent.parent
 DATASET_BASE_DIR = ROOT_DIR / "artifacts/data_ingestion/DatasetPests/Classes/Rotuladas"
-OUTPUT_DIR = ROOT_DIR / "artifacts/data/DatasetPests-cropped-10-classes"
+OUTPUT_DIR = ROOT_DIR / "artifacts/data/processed/DatasetPests-cropped"
 
 def normalize_name(name: str) -> str:
     """Normaliza nomes de arquivo removendo case, hífens, underscores, espaços e o sufixo 'orig'."""

@@ -3,7 +3,8 @@ import os
 # 🔇 SILENCIA LOGS VERBOSOS DO TENSORFLOW 0=all, 1=info, 2=warning, 3=error
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"  # Silencia logs verbosos
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"  # Remove warnings oneDNN
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+if "CUDA_VISIBLE_DEVICES" not in os.environ:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 from dataclasses import dataclass, field
@@ -38,8 +39,69 @@ class DataSplitter:
     data_split_config: DataSplitterConfig
     image_config: ImageConfig
     subset: DataSubsetType
+    resize_with_pad: bool = True
     _cached_splits: tuple = field(default=None, init=False, repr=False)
     class_names: list = field(default_factory=list, init=False)
+
+    def _create_padded_dataset(self, directory, class_names, target_class_names=None, shuffle=True, seed=None):
+        directory = Path(directory)
+        file_paths = []
+        labels = []
+        
+        if target_class_names is None:
+            target_class_names = class_names
+            
+        class_to_idx = {name: idx for idx, name in enumerate(target_class_names)}
+        
+        for name_in_dir, target_name in zip(class_names, target_class_names):
+            class_dir = directory / name_in_dir
+            if not class_dir.exists():
+                matched_dir = None
+                for d in directory.iterdir():
+                    if d.is_dir() and (d.name == name_in_dir or d.name.replace('_', '-').startswith(name_in_dir.replace('_', '-'))):
+                        matched_dir = d
+                        break
+                if matched_dir:
+                    class_dir = matched_dir
+                else:
+                    logger.warning(f"⚠️ Pasta para classe {name_in_dir} não encontrada em {directory}")
+                    continue
+            
+            idx = class_to_idx[target_name]
+            for img_path in class_dir.iterdir():
+                if img_path.is_file() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']:
+                    file_paths.append(str(img_path))
+                    labels.append(idx)
+                    
+        if not file_paths:
+            raise ValueError(f"Nenhuma imagem encontrada no diretório {directory} para as classes especificadas.")
+            
+        num_classes = len(target_class_names)
+        one_hot_labels = tf.keras.utils.to_categorical(labels, num_classes=num_classes)
+        
+        dataset = tf.data.Dataset.from_tensor_slices((file_paths, one_hot_labels))
+        
+        if shuffle:
+            if seed is not None:
+                dataset = dataset.shuffle(buffer_size=len(file_paths), seed=seed, reshuffle_each_iteration=True)
+            else:
+                dataset = dataset.shuffle(buffer_size=len(file_paths), reshuffle_each_iteration=True)
+                
+        target_height = self.image_config.altura
+        target_width = self.image_config.largura
+        
+        def load_and_resize(file_path, label):
+            img_bytes = tf.io.read_file(file_path)
+            img = tf.image.decode_image(img_bytes, channels=3, expand_animations=False)
+            img.set_shape([None, None, 3])
+            img = tf.cast(img, tf.float32)
+            img = tf.image.resize_with_pad(img, target_height, target_width)
+            return img, label
+            
+        dataset = dataset.map(load_and_resize, num_parallel_calls=tf.data.AUTOTUNE)
+        dataset = dataset.batch(self.data_split_config.batch_size)
+        dataset = dataset.prefetch(tf.data.AUTOTUNE)
+        return dataset
 
     def _load_all_splits(self):
         """
@@ -60,32 +122,56 @@ class DataSplitter:
         if train_dir.exists() and val_dir.exists():
             logger.info(f"📂 Detectado dataset pré-dividido em: {self.image_config.data_dir}")
             
-            # Carregar treino
-            train_data = tf.keras.utils.image_dataset_from_directory(
-                directory=train_dir,
-                label_mode="categorical",
-                shuffle=True,
-                seed=self.data_split_config.random_seed,
-                image_size=(self.image_config.altura, self.image_config.largura),
-                batch_size=self.data_split_config.batch_size,
-            )
-            self.class_names = train_data.class_names
+            # Obter nomes das classes ordenados
+            self.class_names = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
+            
+            if self.resize_with_pad:
+                logger.info("📐 Utilizando redimensionamento com Aspect-Ratio Padding (Letterbox)")
+                with tf.device('/CPU:0'):
+                    train_data = self._create_padded_dataset(
+                        directory=train_dir,
+                        class_names=self.class_names,
+                        shuffle=True,
+                        seed=self.data_split_config.random_seed
+                    )
+                    
+                    validation_data = self._create_padded_dataset(
+                        directory=val_dir,
+                        class_names=self.class_names,
+                        shuffle=False
+                    )
+                    
+                    test_data = validation_data
+                    
+                    train_batches = tf.data.experimental.cardinality(train_data).numpy()
+                    val_batches = tf.data.experimental.cardinality(validation_data).numpy()
+            else:
+                with tf.device('/CPU:0'):
+                    # Carregar treino original (stretching)
+                    train_data = tf.keras.utils.image_dataset_from_directory(
+                        directory=train_dir,
+                        label_mode="categorical",
+                        shuffle=True,
+                        seed=self.data_split_config.random_seed,
+                        image_size=(self.image_config.altura, self.image_config.largura),
+                        batch_size=self.data_split_config.batch_size,
+                    )
+                    self.class_names = train_data.class_names
 
-            # Carregar validação
-            validation_data = tf.keras.utils.image_dataset_from_directory(
-                directory=val_dir,
-                label_mode="categorical",
-                shuffle=False,  # Validação não precisa shuffle
-                class_names=self.class_names,  # Garante mesmo mapeamento de classes
-                image_size=(self.image_config.altura, self.image_config.largura),
-                batch_size=self.data_split_config.batch_size,
-            )
+                    # Carregar validação original
+                    validation_data = tf.keras.utils.image_dataset_from_directory(
+                        directory=val_dir,
+                        label_mode="categorical",
+                        shuffle=False,
+                        class_names=self.class_names,
+                        image_size=(self.image_config.altura, self.image_config.largura),
+                        batch_size=self.data_split_config.batch_size,
+                    )
 
-            # Teste padrão é o de validação (usado se não houver test_dir externo)
-            test_data = validation_data
+                    test_data = validation_data
 
-            train_batches = tf.data.experimental.cardinality(train_data).numpy()
-            val_batches = tf.data.experimental.cardinality(validation_data).numpy()
+                    train_batches = tf.data.experimental.cardinality(train_data).numpy()
+                    val_batches = tf.data.experimental.cardinality(validation_data).numpy()
             
             batch_size = self.data_split_config.batch_size
             train_images = train_batches * batch_size
@@ -99,34 +185,91 @@ class DataSplitter:
             )
         else:
             logger.info(f"📂 Carregando dataset único e realizando divisão dinâmica: {self.image_config.data_dir}")
-            # Carregar dataset completo
-            full_dataset = tf.keras.utils.image_dataset_from_directory(
-                directory=self.image_config.data_dir,
-                label_mode="categorical",
-                shuffle=True,
-                seed=self.data_split_config.random_seed,
-                image_size=(self.image_config.altura, self.image_config.largura),
-                batch_size=self.data_split_config.batch_size,
-            )
-            self.class_names = full_dataset.class_names
+            
+            if self.resize_with_pad:
+                logger.info("📐 Utilizando redimensionamento com Aspect-Ratio Padding (Letterbox) na divisão dinâmica")
+                self.class_names = sorted([d.name for d in Path(self.image_config.data_dir).iterdir() if d.is_dir()])
+                
+                directory = Path(self.image_config.data_dir)
+                file_paths = []
+                labels = []
+                
+                class_to_idx = {name: idx for idx, name in enumerate(self.class_names)}
+                for class_name in self.class_names:
+                    class_dir = directory / class_name
+                    idx = class_to_idx[class_name]
+                    for img_path in class_dir.iterdir():
+                        if img_path.is_file() and img_path.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']:
+                            file_paths.append(str(img_path))
+                            labels.append(idx)
+                            
+                num_classes = len(self.class_names)
+                one_hot_labels = tf.keras.utils.to_categorical(labels, num_classes=num_classes)
+                
+                full_dataset = tf.data.Dataset.from_tensor_slices((file_paths, one_hot_labels))
+                full_dataset = full_dataset.shuffle(buffer_size=len(file_paths), seed=self.data_split_config.random_seed, reshuffle_each_iteration=False)
+                
+                dataset_size = len(file_paths)
+                train_size = int(dataset_size * self.data_split_config.train_ratio)
+                val_size = int(dataset_size * self.data_split_config.val_ratio)
+                
+                train_paths_labels = full_dataset.take(train_size)
+                remaining = full_dataset.skip(train_size)
+                val_paths_labels = remaining.take(val_size)
+                test_paths_labels = remaining.skip(val_size)
+                
+                target_height = self.image_config.altura
+                target_width = self.image_config.largura
+                batch_size = self.data_split_config.batch_size
+                
+                def load_and_resize(file_path, label):
+                    img_bytes = tf.io.read_file(file_path)
+                    img = tf.image.decode_image(img_bytes, channels=3, expand_animations=False)
+                    img.set_shape([None, None, 3])
+                    img = tf.cast(img, tf.float32)
+                    img = tf.image.resize_with_pad(img, target_height, target_width)
+                    return img, label
+                    
+                train_data = train_paths_labels.map(load_and_resize, num_parallel_calls=tf.data.AUTOTUNE).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+                validation_data = val_paths_labels.map(load_and_resize, num_parallel_calls=tf.data.AUTOTUNE).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+                test_data = test_paths_labels.map(load_and_resize, num_parallel_calls=tf.data.AUTOTUNE).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+                
+                train_batches = tf.data.experimental.cardinality(train_data).numpy()
+                val_batches = tf.data.experimental.cardinality(validation_data).numpy()
+                test_batches = tf.data.experimental.cardinality(test_data).numpy()
+                
+                train_images = train_batches * batch_size
+                val_images = val_batches * batch_size
+                test_images = test_batches * batch_size
+            else:
+                # Carregar dataset completo original (stretching)
+                with tf.device('/CPU:0'):
+                    full_dataset = tf.keras.utils.image_dataset_from_directory(
+                        directory=self.image_config.data_dir,
+                        label_mode="categorical",
+                        shuffle=True,
+                        seed=self.data_split_config.random_seed,
+                        image_size=(self.image_config.altura, self.image_config.largura),
+                        batch_size=self.data_split_config.batch_size,
+                    )
+                    self.class_names = full_dataset.class_names
 
-            # Calculo do tamanho (em batches)
-            dataset_size_batches = tf.data.experimental.cardinality(full_dataset).numpy()
-            train_batches = int(dataset_size_batches * self.data_split_config.train_ratio)
-            val_batches = int(dataset_size_batches * self.data_split_config.val_ratio)
-            test_batches = int(dataset_size_batches * self.data_split_config.test_ratio)
+                    # Calculo do tamanho (em batches)
+                    dataset_size_batches = tf.data.experimental.cardinality(full_dataset).numpy()
+                    train_batches = int(dataset_size_batches * self.data_split_config.train_ratio)
+                    val_batches = int(dataset_size_batches * self.data_split_config.val_ratio)
+                    test_batches = int(dataset_size_batches * self.data_split_config.test_ratio)
 
-            # Calcular número de imagens (aproximado)
-            batch_size = self.data_split_config.batch_size
-            train_images = train_batches * batch_size
-            val_images = val_batches * batch_size
-            test_images = test_batches * batch_size
+                batch_size = self.data_split_config.batch_size
+                train_images = train_batches * batch_size
+                val_images = val_batches * batch_size
+                test_images = test_batches * batch_size
 
-            # Dividir: treino | validação | teste
-            train_data = full_dataset.take(train_batches)
-            remaining = full_dataset.skip(train_batches)
-            validation_data = remaining.take(val_batches)
-            test_data = remaining.skip(val_batches)
+                # Dividir: treino | validação | teste
+                train_data = full_dataset.take(train_batches)
+                remaining = full_dataset.skip(train_batches)
+                validation_data = remaining.take(val_batches)
+                test_data = remaining.skip(val_batches)
 
             self._cached_splits = (train_data, validation_data, test_data)
 
@@ -140,20 +283,21 @@ class DataSplitter:
 
     def load_train_data(self):
         """Carrega dados de treino (compatível com Stage 5)"""
-        train_data, _, _ = self._load_all_splits()
+        with tf.device('/CPU:0'):
+            train_data, _, _ = self._load_all_splits()
 
-        # O dataset já vem batchado pelo image_dataset_from_directory
-        # CutMix operates on (images, labels) batches
-        seed = self.data_split_config.random_seed
-        cutmix = tf.keras.layers.CutMix(seed=seed)
+            # O dataset já vem batchado pelo image_dataset_from_directory
+            # CutMix operates on (images, labels) batches
+            seed = self.data_split_config.random_seed
+            cutmix = tf.keras.layers.CutMix(seed=seed)
+            logger.info(f"CutMix habilitado com seed: {seed}")
 
-        def apply_cutmix(images, labels):
-            outputs = cutmix({"images": images, "labels": labels})
-            return outputs["images"], outputs["labels"]
+            def apply_cutmix(images, labels):
+                outputs = cutmix({"images": images, "labels": labels})
+                return outputs["images"], outputs["labels"]
 
-        train_data = train_data.map(apply_cutmix, num_parallel_calls=tf.data.AUTOTUNE)
-        train_data = train_data.prefetch(tf.data.AUTOTUNE)
-
+            train_data = train_data.map(apply_cutmix, num_parallel_calls=tf.data.AUTOTUNE)
+            train_data = train_data.prefetch(tf.data.AUTOTUNE)
         return train_data
 
     def load_validation_data(self):
@@ -168,7 +312,7 @@ class DataSplitter:
 
     def load_test_data(self):
         """Carrega dados de teste para avaliação final"""
-        test_dir = Path("artifacts/data/INSECT12C-cropped-10-classes")
+        test_dir = Path("artifacts/data/final/INSECT12C-test")
         if test_dir.exists():
             logger.info(f"🧪 Carregando dataset de teste externo de: {test_dir}")
             
@@ -176,14 +320,40 @@ class DataSplitter:
             if not self.class_names:
                 self._load_all_splits()
                 
-            return tf.keras.utils.image_dataset_from_directory(
-                directory=test_dir,
-                label_mode="categorical",
-                class_names=self.class_names,  # Garante mesmo mapeamento de classes e ignora pastas com sufixos
-                shuffle=False,
-                image_size=(self.image_config.altura, self.image_config.largura),
-                batch_size=self.data_split_config.batch_size,
-            )
+            # Mapeia dinamicamente os nomes das pastas correspondentes no diretório de teste
+            test_subdirs = [d.name for d in test_dir.iterdir() if d.is_dir()]
+            mapped_test_class_names = []
+            for class_name in self.class_names:
+                matched = None
+                for subdir in test_subdirs:
+                    if subdir.startswith(class_name) or subdir.replace('_', '-').startswith(class_name.replace('_', '-')):
+                        matched = subdir
+                        break
+                if matched:
+                    mapped_test_class_names.append(matched)
+                else:
+                    logger.warning(f"⚠️ Não foi possível mapear a classe {class_name} para as pastas de teste. Usando fallback.")
+                    mapped_test_class_names.append(class_name)
+
+            if self.resize_with_pad:
+                logger.info("📐 Utilizando redimensionamento com Aspect-Ratio Padding (Letterbox) no teste externo")
+                with tf.device('/CPU:0'):
+                    return self._create_padded_dataset(
+                        directory=test_dir,
+                        class_names=mapped_test_class_names,
+                        target_class_names=self.class_names,
+                        shuffle=False
+                    )
+            else:
+                with tf.device('/CPU:0'):
+                    return tf.keras.utils.image_dataset_from_directory(
+                        directory=test_dir,
+                        label_mode="categorical",
+                        class_names=mapped_test_class_names,  # Garante mesmo mapeamento de classes
+                        shuffle=False,
+                        image_size=(self.image_config.altura, self.image_config.largura),
+                        batch_size=self.data_split_config.batch_size,
+                    )
         else:
             logger.warning(f"⚠️ Diretório de teste {test_dir} não encontrado. Usando split original.")
             _, _, test_data = self._load_all_splits()
@@ -205,12 +375,13 @@ class DataSplitter:
         else:
             class_dir = Path(self.image_config.data_dir)
 
-        class_names = tf.keras.utils.image_dataset_from_directory(
-            directory=class_dir,
-            shuffle=False,
-            image_size=(self.image_config.altura, self.image_config.largura),
-            batch_size=1,
-        ).class_names
+        with tf.device('/CPU:0'):
+            class_names = tf.keras.utils.image_dataset_from_directory(
+                directory=class_dir,
+                shuffle=False,
+                image_size=(self.image_config.altura, self.image_config.largura),
+                batch_size=1,
+            ).class_names
         num_classes = len(class_names)
 
         def count_labels(ds):

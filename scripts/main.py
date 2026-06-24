@@ -1,4 +1,8 @@
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+
 from pathlib import Path
 import warnings
 
@@ -14,8 +18,6 @@ from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ImageConfig, ModelConfig
 
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 
 logger = configure_logger(__name__)
