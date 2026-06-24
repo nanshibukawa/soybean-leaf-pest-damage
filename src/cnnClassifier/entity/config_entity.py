@@ -17,6 +17,16 @@ class DataIngestionConfig:
     source_URL: str = field(default=constants.SOURCE_URL)
     local_datafile: Path = field(default=constants.DATA_ZIP_FILE)
     unzip_dir: Path = field(default=constants.DATA_EXTRACT_DIR)
+    
+    # iNaturalist Raw
+    inat_raw_url: str = field(default=constants.INAT_RAW_URL)
+    inat_raw_zip: Path = field(default=constants.INAT_RAW_ZIP)
+    inat_unzip_dir: Path = field(default=constants.INAT_EXTRACT_DIR)
+    
+    # INSECT12C
+    insect12c_url: str = field(default=constants.INSECT12C_URL)
+    insect12c_zip: Path = field(default=constants.INSECT12C_ZIP)
+    insect12c_unzip_dir: Path = field(default=constants.INSECT12C_EXTRACT_DIR)
 
 
 class ImageConfig(BaseModel):

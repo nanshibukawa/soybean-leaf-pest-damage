@@ -13,11 +13,21 @@ LOCAL_DATA_DIR = ARTIFACTS_DIR / "data"
 # DATA INGESTION
 # =============================================================================
 SOURCE_URL = (
-    "https://drive.google.com/file/d/1tEAsHPKwjlm88zLjA9UxRg5_MeLGX2mL/view?usp=sharing"  # INSECT12C-cropped-10-classes dataset
+    "https://drive.google.com/file/d/1fTCJtVkgFO5eUvjVNnbsYri5RCDYVRdW/view?usp=drive_link"  # DatasetPests
 )
-DATA_INGESTION_DIR = ARTIFACTS_DIR / "data"
+DATA_INGESTION_DIR = ARTIFACTS_DIR / "data_ingestion"
 DATA_ZIP_FILE = DATA_INGESTION_DIR / "data.zip"
 DATA_EXTRACT_DIR = DATA_INGESTION_DIR
+
+# iNaturalist Raw (Gdrive)
+INAT_RAW_URL = "https://drive.google.com/file/d/1RbY8zGE0pgJArF3OdiiSbHQksWCaA1fz/view?usp=drive_link"
+INAT_RAW_ZIP = DATA_INGESTION_DIR / "inaturalist_raw.zip"
+INAT_EXTRACT_DIR = DATA_INGESTION_DIR / "inaturalist"
+
+# INSECT12C (GitHub main branch zip)
+INSECT12C_URL = "https://github.com/EvertonTetila/INSECT12C-Dataset/archive/refs/heads/main.zip"
+INSECT12C_ZIP = DATA_INGESTION_DIR / "insect12c.zip"
+INSECT12C_EXTRACT_DIR = DATA_INGESTION_DIR
 
 
 # =============================================================================
@@ -26,8 +36,8 @@ DATA_EXTRACT_DIR = DATA_INGESTION_DIR
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/bycbh73438-1"
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/DatasetPests/Classes/Rotuladas"
 # DATA_SOURCE_DIR = "artifacts/data_ingestion/INSECT12C-cropped-10-classes"
-DATA_SOURCE_DIR = "artifacts/data/DatasetPests-balanced"
-DATA_TEST_DIR = "artifacts/data/INSECT12C-cropped-10-classes"
+DATA_SOURCE_DIR = "artifacts/data/final/DatasetPests-split"
+DATA_TEST_DIR = "artifacts/data/final/INSECT12C-test"
 DATA_SPLIT_DIR = "artifacts/data_split"
 
 # Proporções

@@ -1,5 +1,9 @@
-import logging
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+
+import logging
 from pathlib import Path
 import warnings
 import json
@@ -48,8 +52,6 @@ if mlflow_uri:
     mlflow.set_tracking_uri(mlflow_uri)
 
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 
 # 📊 Habilitar MLflow System Metrics Logging

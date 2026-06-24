@@ -229,9 +229,22 @@ class PrepareModel:
 
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
         x = tf.keras.layers.Flatten()(x)
+
+        # --- CÓDIGO ANTIGO (BN após ativação ReLU) ---
+        # x = tf.keras.layers.Dense(
+        #     128,
+        #     activation="relu",
+        #     kernel_constraint=tf.keras.constraints.MaxNorm(3),
+        #     kernel_regularizer=tf.keras.regularizers.L2(l2_val),
+        #     name="dense_128",
+        # )(x)
+        # x = tf.keras.layers.BatchNormalization()(x)
+        # x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
+
+        # --- NOVO CÓDIGO (ConvGeM-next: BN antes de ReLU e Dropout) ---
         x = tf.keras.layers.Dense(
             128,
-            activation="relu",
+            activation=None,
             kernel_constraint=tf.keras.constraints.MaxNorm(3),
             # kernel_regularizer=tf.keras.regularizers.L2(0.01),
             kernel_regularizer=tf.keras.regularizers.L2(l2_val),
@@ -239,6 +252,7 @@ class PrepareModel:
         )(x)
 
         x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.ReLU()(x)
         x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
         outputs = tf.keras.layers.Dense(
             self.model_config.num_classes,

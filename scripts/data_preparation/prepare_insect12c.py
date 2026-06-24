@@ -15,10 +15,10 @@ from cnnClassifier.utils.logger import configure_logger
 logger = configure_logger("prepare_insect12c")
 
 # Base directories
-ROOT_DIR = Path(__file__).parent.parent
+ROOT_DIR = Path(__file__).parent.parent.parent
 DATASET_BASE_DIR = ROOT_DIR / "artifacts/data_ingestion/INSECT12C-Dataset-main"
-OUTPUT_12_CLASSES_DIR = ROOT_DIR / "artifacts/data/INSECT12C-cropped-12-classes"
-OUTPUT_10_CLASSES_DIR = ROOT_DIR / "artifacts/data/INSECT12C-cropped-10-classes"
+OUTPUT_12_CLASSES_DIR = ROOT_DIR / "artifacts/data/processed/INSECT12C-cropped-12-classes"
+OUTPUT_10_CLASSES_DIR = ROOT_DIR / "artifacts/data/final/INSECT12C-test"
 
 # 10-class mapping to match the current pipeline (DatasetPests structure)
 # Maps the 12 classes of INSECT12C to the 10 folders expected in the current pipeline.
