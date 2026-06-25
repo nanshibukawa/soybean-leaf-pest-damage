@@ -37,10 +37,17 @@ class ModelEvaluationPipeline:
                 "antes de rodar a avaliação."
             )
 
+        train_dir = data_dir / "train"
+        val_dir = data_dir / "val"
+        if train_dir.exists() and val_dir.exists():
+            class_search_dir = train_dir
+        else:
+            class_search_dir = data_dir
+
         self.class_names = sorted(
             [
                 d.name
-                for d in data_dir.iterdir()
+                for d in class_search_dir.iterdir()
                 if d.is_dir() and not d.name.startswith(".")
             ]
         )
@@ -75,21 +82,21 @@ class ModelEvaluationPipeline:
         model = tf.keras.models.load_model(model_path)
         return model, model_path
 
-    def _create_results_dir(self):
+    def _create_results_dir(self, prefix="evaluation"):
         """Cria diretório de resultados com timestamp"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_dir = Path("artifacts") / "model_evaluation" / f"evaluation_{timestamp}"
+        save_dir = Path("artifacts") / "model_evaluation" / f"{prefix}_{timestamp}"
         create_dirs(save_dir)
         logger.info(f"📁 Diretório de resultados: {save_dir}")
         return save_dir
 
-    def main(self, validation_data=None, model=None, history=None):
+    def main(self, validation_data=None, model=None, history=None, prefix="evaluation"):
         """Pipeline único - carrega do disco OU usa modelo fornecido"""
         try:
             logger.info(f"🎯 Iniciando {STAGE_NAME}...")
 
             # Criar diretório com timestamp
-            save_dir = self._create_results_dir()
+            save_dir = self._create_results_dir(prefix=prefix)
 
             # Carregar dados
             if validation_data is None:

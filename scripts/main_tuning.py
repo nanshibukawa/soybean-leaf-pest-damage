@@ -1,5 +1,9 @@
-import logging
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+
+import logging
 from pathlib import Path
 import warnings
 import json
@@ -48,8 +52,6 @@ if mlflow_uri:
     mlflow.set_tracking_uri(mlflow_uri)
 
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 
 # 📊 Habilitar MLflow System Metrics Logging
@@ -136,8 +138,10 @@ def main(
         mlflow.set_system_metrics_sampling_interval(10)  # Coletar a cada 10 segundos
         mlflow.set_system_metrics_samples_before_logging(1)  # Logar após cada coleta
 
+        dataset_name = Path(DATA_SOURCE_DIR).name
+
         with mlflow.start_run(
-            run_name=f"{model_config.model_name}-{mode}", log_system_metrics=True
+            run_name=f"{model_config.model_name}-{dataset_name}-{mode}", log_system_metrics=True
         ) as parent_run:
             logger.info(f"🔗 MLflow parent run: {parent_run.info.run_id}")
             logger.info(
@@ -146,6 +150,7 @@ def main(
 
             mlflow.log_param("random_seed", seed)
             mlflow.log_param("model_name", model_config.model_name)
+            mlflow.log_param("dataset_name", dataset_name)
             mlflow.log_param("image_size", str(model_config.image_size))
             mlflow.log_param("batch_size", model_config.batch_size)
             mlflow.log_param("max_trials", max_trials)
@@ -181,21 +186,7 @@ def main(
             logger.info(
                 f"📦 Python: {sys.version.split()[0]}, TensorFlow: {tf.__version__}, NumPy: {np.__version__}"
             )
-
-            # Logar class_weights se existir
-            # class_weights = getattr(model_config, "class_weights", None)
-            class_weights = None
-            if class_weights:
-                class_names = ["caterpillar", "diabrotica_speciosa", "healthy"]
-                for class_id, weight in class_weights.items():
-                    class_name = (
-                        class_names[class_id]
-                        if class_id < len(class_names)
-                        else f"class_{class_id}"
-                    )
-                    mlflow.log_param(f"class_weight_{class_name}", weight)
-            else:
-                mlflow.log_param("class_weight", "None")
+            mlflow.log_param("class_weight", "None")
 
             # Logar augmentation params
             mlflow.log_param("augmentation_enabled", model_config.augmentation_enabled)
@@ -275,6 +266,13 @@ def main(
 
             class_distribution = data_splitter.get_class_distribution()
             mlflow.log_dict(class_distribution, "data_split_class_distribution.json")
+
+            # # Logar pesos de classe dinâmicos no MLflow
+            # class_weights = data_splitter.get_class_weights()
+            # class_names = data_splitter.class_names
+            # for class_id, weight in class_weights.items():
+            #     class_name = class_names[class_id] if class_id < len(class_names) else f"class_{class_id}"
+            #     mlflow.log_param(f"class_weight_{class_name}", weight)
 
             # Inicializar tuner
             logger.info("🔧 Inicializando Keras Tuner...")
@@ -387,6 +385,7 @@ def main(
                     validation_data=stage2_result["validation_data"],
                     model=best_model,
                     history=history,
+                    prefix="val_evaluation",
                 )
 
                 if stage5_result["success"]:
@@ -419,6 +418,7 @@ def main(
                     validation_data=test_data,  # ← Usa teste em vez de validação
                     model=best_model,
                     history=history,
+                    prefix="test_evaluation",
                 )
                 logger.info(
                     f"🧪 Teste Final - Acurácia: {test_result['metrics']['accuracy']:.4f}"
@@ -447,10 +447,17 @@ def main(
                             "antes de rodar a avaliação."
                         )
 
+                    train_dir = data_dir / "train"
+                    val_dir = data_dir / "val"
+                    if train_dir.exists() and val_dir.exists():
+                        class_search_dir = train_dir
+                    else:
+                        class_search_dir = data_dir
+
                     class_names = sorted(
                         [
                             d.name
-                            for d in data_dir.iterdir()
+                            for d in class_search_dir.iterdir()
                             if d.is_dir() and not d.name.startswith(".")
                         ]
                     )
@@ -504,10 +511,17 @@ def main(
                         "antes de rodar a avaliação."
                     )
 
+                train_dir = data_dir / "train"
+                val_dir = data_dir / "val"
+                if train_dir.exists() and val_dir.exists():
+                    class_search_dir = train_dir
+                else:
+                    class_search_dir = data_dir
+
                 class_names = sorted(
                     [
                         d.name
-                        for d in data_dir.iterdir()
+                        for d in class_search_dir.iterdir()
                         if d.is_dir() and not d.name.startswith(".")
                     ]
                 )

@@ -76,13 +76,15 @@ class AugmentationPipeline:
                 f"Data Augmentation: RandomZoom adicionado{self.model_config.zoom_factor}"
             )
 
-        # NOTE: brightness_range está piorando os resultados para este dataset (soybean leaf pest damage)
-        # if hasattr(self.model_config, "brightness_range"):
-        #     brightness = self.model_config.brightness_range
-        #     layers.append(
-        #         tf.keras.layers.RandomBrightness(factor=brightness, seed=seed)
-        #     )
-        #     logger.info("Data Augmentation: RandomBrightness adicionado")
+        if (
+            hasattr(self.model_config, "brightness_range")
+            and self.model_config.brightness_range
+        ):
+            brightness = self.model_config.brightness_range
+            layers.append(
+                tf.keras.layers.RandomBrightness(factor=brightness, seed=seed)
+            )
+            logger.info("Data Augmentation: RandomBrightness adicionado")
 
         # TODO: implement RandomTranslation
         # """

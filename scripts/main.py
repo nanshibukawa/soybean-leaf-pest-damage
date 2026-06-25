@@ -1,4 +1,8 @@
 import os
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
+os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+
 from pathlib import Path
 import warnings
 
@@ -14,8 +18,6 @@ from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ImageConfig, ModelConfig
 
 # 🔇 CONFIGURAÇÕES TF NO INÍCIO
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
-os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 warnings.filterwarnings("ignore", ".*Invalid SOS parameters.*")
 
 logger = configure_logger(__name__)
@@ -30,7 +32,7 @@ def main():
         # model_config = ModelConfig.from_yaml(config_path="model_params.yaml")
         # model_config = ModelConfig.from_yaml("model_params.yaml", experiment="vgg_transfer")
         model_config = ModelConfig.from_yaml(
-            "model_params.yaml", experiment="mobilenet"
+            "model_params.yaml", experiment="mobilenetv3large"
         )
 
         logger.info(f"✅ Configuração carregada: {model_config.model_name}")
@@ -103,6 +105,7 @@ def main():
                 validation_data=stage2_result["validation_data"],
                 model=stage4_result["model"],
                 history=stage4_result.get("history"),
+                prefix="val_evaluation",
             )
 
             if stage5_result["success"]:

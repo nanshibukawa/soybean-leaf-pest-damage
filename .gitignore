@@ -21,6 +21,7 @@ data/processed/
 artifacts/
 mlruns/
 streamlit/
+runs/
 
 # OS generated files
 .DS_Store
@@ -45,6 +46,7 @@ logs/
 *.tmp
 *.temp
 *~
+scratch/
 
 # Globally Ignored Extensions
 *.pdf

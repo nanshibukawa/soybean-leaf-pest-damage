@@ -158,7 +158,34 @@ class KerasTunerSearch:
             nesterov=True,
         )
 
-        loss_fn = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
+        # Calcular os pesos alpha balanceados (Effective Number of Samples - Cui et al.)
+        train_dir = Path("artifacts/data/final/DatasetPests-split/train")
+        alpha_weights = 1.0  # Fallback padrão
+
+        if train_dir.exists():
+            class_names = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
+            train_counts = {
+                d.name: len([f for f in d.iterdir() if f.is_file()])
+                for d in train_dir.iterdir() if d.is_dir()
+            }
+            
+            beta = 0.999
+            weights = []
+            for class_name in class_names:
+                n = train_counts.get(class_name, 1)
+                w = (1.0 - beta) / (1.0 - np.power(beta, n)) if n > 0 else 1.0
+                weights.append(w)
+            
+            # Normalizar para que a média dos pesos seja 1.0 (mantém a escala original da loss)
+            weights = np.array(weights, dtype=np.float32)
+            alpha_weights = (weights / np.mean(weights)).tolist()
+            logger.info(f"⚖️ Pesos alpha calculados (Focal Loss): {dict(zip(class_names, alpha_weights))}")
+        else:
+            logger.warning(f"⚠️ Diretório de treino {train_dir} não encontrado. Usando alpha=1.0")
+
+        loss_fn = tf.keras.losses.CategoricalFocalCrossentropy(
+            gamma=1.5, alpha=alpha_weights
+        )
 
         model.compile(
             optimizer=optimizer,
@@ -202,6 +229,8 @@ class KerasTunerSearch:
         train_ds = self.data_splitter.load_train_data()
         val_ds = self.data_splitter.load_validation_data()
 
+        # class_weights = self.data_splitter.get_class_weights()
+        # logger.info(f"⚖️ Injetando class_weights na busca do Tuner: {class_weights}")
         self.tuner.search(
             train_ds,
             validation_data=val_ds,
@@ -258,6 +287,8 @@ class KerasTunerSearch:
             ),
         ]
 
+        # class_weights = self.data_splitter.get_class_weights()
+        # logger.info(f"⚖️ Injetando class_weights no retreino do Tuner: {class_weights}")
         history = model.fit(
             train_ds,
             validation_data=val_ds,
