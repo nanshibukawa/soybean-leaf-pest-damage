@@ -54,7 +54,7 @@ def fetch_json(url):
         }
     )
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             return json.loads(response.read().decode("utf-8"))
     except Exception as e:
         print(f"Erro ao acessar {url}: {e}")
@@ -64,7 +64,7 @@ def download_image(url, output_path):
     """Baixa um arquivo de imagem da URL especificada."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=15) as response:
             output_path.write_bytes(response.read())
         return True
     except Exception as e:

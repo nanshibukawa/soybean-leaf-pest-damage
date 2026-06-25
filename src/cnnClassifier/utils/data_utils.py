@@ -25,7 +25,7 @@ def download_file(url: str, output_path: Path) -> Path:
                 url, 
                 headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
             )
-            with urllib.request.urlopen(req) as response, open(output_path, "wb") as out_file:
+            with urllib.request.urlopen(req, timeout=30) as response, open(output_path, "wb") as out_file:
                 out_file.write(response.read())
             logger.info("✅ Download completo!")
             return output_path

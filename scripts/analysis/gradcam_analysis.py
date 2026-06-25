@@ -114,14 +114,20 @@ if __name__ == "__main__":
     # Caminho do seu modelo final (.keras, não .tflite)
 
     # No bloco de carregamento:
+    model_path = os.getenv(
+        "MODEL_PATH",
+        "artifacts/models/mobile/MobileNetV3Large_keras_tuner_best.keras"
+    )
+    # Fallback para o caminho local do usuário se o padrão não existir e o local existir
+    if not os.path.exists(model_path):
+        local_user_path = "/home/nanshibukawa/Documents/teste_images/health/MobileNetV3Large_keras_tuner_best (1).keras"
+        if os.path.exists(local_user_path):
+            model_path = local_user_path
+
     model = tf.keras.models.load_model(
-        "/home/nanshibukawa/Documents/teste_images/health/MobileNetV3Large_keras_tuner_best (1).keras",
+        model_path,
         custom_objects={"TopKGlobalAveragePooling2D": TopKGlobalAveragePooling2D},
     )
-    # model = tf.keras.models.load_model(
-    #     # "/home/nanshibukawa/Documents/mestrado/soybean-leaf-pest-damage/artifacts/models/mobile/MobileNetV3Large_keras_tuner_best.keras"
-    #     "/home/nanshibukawa/Documents/teste_images/health/MobileNetV3Large_keras_tuner_best (1).keras"
-    # )
 
     # Encontrar automaticamente a última camada convolucional 4D (mesmo em modelos aninhados)
     last_conv_layer_name = None
