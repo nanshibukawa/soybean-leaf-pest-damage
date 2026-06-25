@@ -79,9 +79,17 @@ pip install .[image-processing]
 │   ├── api/                    # API de busca + geração (RAG)
 │   ├── rag/                    # Engine e ingestão de documentos para RAG
 │   └── ui/                     # Interface de usuário
-├── notebooks/                  # Jupyter notebooks para análise
-├── scripts/                    # Scripts de execução
-├── artifacts/                  # Artefatos gerados (modelos, dados)
+├── scripts/                    # Scripts utilitários e de execução
+│   ├── data_preparation/       # Processamento e recorte de dados
+│   ├── yolo_inaturalist/       # Mineração iNaturalist e pipeline YOLO
+│   ├── analysis/               # Grad-CAM e explicabilidade
+│   ├── main.py                 # Pipeline principal do classificador
+│   └── main_tuning.py          # Busca de hiperparâmetros (Keras Tuner)
+├── artifacts/                  # Artefatos do projeto
+│   ├── data/                   # Datasets organizados (raw, processed, final, yolo)
+│   ├── data_ingestion/         # Ingestão bruta de dados
+│   ├── models/                 # Modelos CNN salvos
+│   └── yolo_runs/              # Treinamentos do detector YOLOv8
 └── logs/                       # Logs de execução
 ```
 
@@ -183,7 +191,21 @@ python scripts/main_tuning.py \
 <a id="dataset"></a>
 ## 📊 Dataset
 
-O projeto utiliza imagens de folhas de soja com diferentes níveis de danos causados por pragas.
+O pipeline de dados do projeto é composto por três fontes de imagens reais de pragas agrícolas da soja:
+
+1. **DatasetPests (GDrive)**: Base principal contendo fotos de pragas e anotações manuais de bounding boxes (Label-Studio CSV) feitas pelos professores.
+2. **iNaturalist API**: Imagens de campo adicionais mineradas de forma automatizada para mitigar o desbalanceamento severo de classes.
+3. **INSECT12C**: Base de dados externa usada para validação cruzada e teste de robustez independente.
+
+### Organização de Diretórios sob `artifacts/data/`
+
+* `artifacts/data/raw/`: Contém os pacotes compactados originais baixados das fontes.
+* `artifacts/data/processed/`: Contém os recortes (*crops*) extraídos das imagens antes da divisão final.
+  * `DatasetPests-cropped/`: Fusão de crops originais manuais com os crops gerados pelo detector automático YOLOv8 nas imagens brutas do iNaturalist.
+* `artifacts/data/final/`: Contém as divisões finais prontas para modelagem:
+  * `DatasetPests-split/`: Divisão segura de Treino (90%) e Validação (10%) agrupada por imagem-mãe (ID único da folha original) para evitar vazamento de dados (*data leakage*).
+  * `INSECT12C-test/`: Conjunto de teste contendo recortes da base externa, com as 12 classes originais mapeadas para as 10 classes do classificador.
+* `artifacts/data/yolo/`: Dataset com anotações convertidas em coordenadas normatizadas YOLO para treinamento do detector de pragas.
 
 <a id="rag"></a>
 ## 🤖 Módulo RAG (Retrieval-Augmented Generation)

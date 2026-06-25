@@ -2,9 +2,36 @@ import zipfile
 from pathlib import Path
 import gdown
 from cnnClassifier.utils.logger import configure_logger
+import urllib.request
 import tensorflow as tf
 
 logger = configure_logger(__name__)
+
+
+def download_file(url: str, output_path: Path) -> Path:
+    """Baixa um arquivo de qualquer URL (Google Drive via gdown ou HTTP direto via urllib)"""
+    if output_path.exists():
+        logger.debug(f"Arquivo já existe: {output_path.name}")
+        return output_path
+        
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    if "drive.google.com" in url or "/file/d/" in url:
+        return download_from_gdrive(url, output_path)
+    else:
+        logger.info(f"Baixando link direto: {url}")
+        try:
+            req = urllib.request.Request(
+                url, 
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+            )
+            with urllib.request.urlopen(req, timeout=30) as response, open(output_path, "wb") as out_file:
+                out_file.write(response.read())
+            logger.info("✅ Download completo!")
+            return output_path
+        except Exception as e:
+            logger.error(f"Erro ao baixar do link direto {url}: {e}")
+            raise e
 
 
 def download_from_gdrive(url: str, output_path: Path) -> Path:
@@ -44,20 +71,17 @@ def download_from_gdrive(url: str, output_path: Path) -> Path:
 
 
 def extract_zip(zip_path: Path, extract_to: Path) -> Path:
-    if extract_to.exists():
-        # Lista apenas arquivos/pastas que NÃO sejam .zip
-        non_zip_items = [
-            item for item in extract_to.iterdir() if not item.name.endswith(".zip")
-        ]
-
-        if non_zip_items:
-            logger.debug(f"{zip_path.name} já extraído ({len(non_zip_items)} items)")
-            return extract_to
+    sentinel = extract_to / f".{zip_path.name}.extracted"
+    if sentinel.exists():
+        logger.debug(f"{zip_path.name} já extraído (marcador encontrado)")
+        return extract_to
 
     try:
         logger.info(f"Extraindo arquivo de {zip_path} para {extract_to}...")
+        extract_to.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             zip_ref.extractall(extract_to)
+        sentinel.touch()
         logger.info("✅ Extração completa!")
         return extract_to
     except Exception as e:

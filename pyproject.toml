@@ -3,9 +3,22 @@ name = "soybean-leaf-pest-damage"
 version = "0.1.0"
 description = "Soybean leaf pest damage detection system using deep learning and clean architecture principles"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = "==3.12.*"
 dependencies = [
-    "tensorflow[and-cuda]==2.17.1",
+    "tensorflow[and-cuda]>=2.17.0",
+    "nvidia-cudnn-cu12>=9.0",
+    "nvidia-cublas-cu12>=12.9",
+    "nvidia-cuda-cupti-cu12",
+    "nvidia-cuda-nvcc-cu12",
+    "nvidia-cuda-nvrtc-cu12",
+    "nvidia-cuda-runtime-cu12",
+    "nvidia-cufft-cu12",
+    "nvidia-curand-cu12",
+    "nvidia-cusolver-cu12",
+    "nvidia-cusparse-cu12",
+    "nvidia-nccl-cu12",
+    "nvidia-nvjitlink-cu12",
+    "tensorboard",
     "pandas",
     "numpy",
     "matplotlib",
@@ -121,3 +134,13 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
+
+[tool.uv]
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+prerelease = "allow"
+override-dependencies = [
+    "tensorflow @ https://github.com/mypapit/tensorflowRTX50/releases/download/2.20dev-ubuntu-24.04-avx-too/tensorflow-2.20.0dev0+selfbuild-cp312-cp312-linux_x86_64.whl"
+]
+
+
+

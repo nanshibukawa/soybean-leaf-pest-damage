@@ -1,4 +1,6 @@
 from typing import Any, Dict
+from pathlib import Path
+import numpy as np
 import tensorflow as tf
 
 
@@ -6,7 +8,8 @@ from cnnClassifier.entity.config_entity import ModelConfig
 from cnnClassifier.utils.logger import configure_logger
 
 physical_devices = tf.config.list_physical_devices("GPU")
-tf.config.experimental.set_memory_growth(physical_devices[0], True)
+if physical_devices:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
 logger = configure_logger(__name__)
 
@@ -77,8 +80,8 @@ class ModelTraining:
             self._compile_model()
 
             logger.info("Iniciando fit do modelo...")
-            # class_weight = self.model_config.class_weights
-            # logger.info(f"🔍 DEBUG class_weights injetados no fit: {class_weight}")
+            # class_weight = class_weights or self.model_config.class_weights
+            # logger.info(f"🔍 class_weights injetados no fit: {class_weight}")
 
             self.history = self.model.fit(
                 train_data,
@@ -144,7 +147,40 @@ class ModelTraining:
         }
 
     def _compile_model(self):
-        loss_function = tf.keras.losses.CategoricalCrossentropy(label_smoothing=0.1)
+        # Calcular os pesos alpha balanceados (Effective Number of Samples - Cui et al.)
+        train_dir = Path("artifacts/data/final/DatasetPests-split/train")
+        alpha_weights = 1.0  # Fallback padrão
+
+        if train_dir.exists():
+            class_names = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
+            train_counts = {
+                d.name: len([f for f in d.iterdir() if f.is_file()])
+                for d in train_dir.iterdir() if d.is_dir()
+            }
+            
+            if self.model_config.class_weights:
+                raw_weights = [self.model_config.class_weights.get(i, 1.0) for i in range(len(class_names))]
+                raw_weights = np.array(raw_weights, dtype=np.float32)
+                alpha_weights = (raw_weights / np.mean(raw_weights)).tolist()
+                logger.info(f"⚖️ Usando pesos alpha manuais do YAML (normalizados): {dict(zip(class_names, alpha_weights))}")
+            else:
+                beta = 0.999
+                weights = []
+                for class_name in class_names:
+                    n = train_counts.get(class_name, 1)
+                    w = (1.0 - beta) / (1.0 - np.power(beta, n)) if n > 0 else 1.0
+                    weights.append(w)
+                
+                # Normalizar para que a média dos pesos seja 1.0 (mantém a escala original da loss)
+                weights = np.array(weights, dtype=np.float32)
+                alpha_weights = (weights / np.mean(weights)).tolist()
+                logger.info(f"⚖️ Pesos alpha calculados (Focal Loss): {dict(zip(class_names, alpha_weights))}")
+        else:
+            logger.warning(f"⚠️ Diretório de treino {train_dir} não encontrado. Usando alpha=1.0")
+
+        loss_function = tf.keras.losses.CategoricalFocalCrossentropy(
+            gamma=1.5, alpha=alpha_weights
+        )
         self.model.compile(
             optimizer=tf.keras.optimizers.SGD(
                 learning_rate=self.model_config.learning_rate,
