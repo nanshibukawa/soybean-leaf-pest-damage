@@ -14,10 +14,14 @@ API para busca semântica e respostas com RAG.
 - `models/`: schemas de entrada/saída
 
 ## Execução local
+
+Para iniciar o servidor da API a partir da raiz do projeto:
+
 ```bash
-cd src
-uvicorn api.main:app --reload
+UV_SKIP_WHEEL_FILENAME_CHECK=1 uv run --package api uvicorn api.main:app --reload
 ```
+
+> **Nota**: A variável `UV_SKIP_WHEEL_FILENAME_CHECK=1` é necessária para contornar a checagem de nome de arquivo do TensorFlow compilado no ambiente de desenvolvimento.
 
 ## Configuração
 Defina as variáveis esperadas em `api/config/settings.py` e em um arquivo `.env` na raiz do projeto.

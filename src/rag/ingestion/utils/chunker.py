@@ -7,6 +7,10 @@ from transformers import AutoTokenizer
 
 
 class SemanticChunker:
+    """
+    Chunker semântico que usa HDBSCAN para agrupar parágrafos por afinidade temática.
+    Garante que parágrafos relacionados fiquem no mesmo chunk, respeitando o tamanho máximo em tokens.
+    """
     def __init__(
         self,
         model_name: str = "intfloat/multilingual-e5-large",
@@ -14,6 +18,15 @@ class SemanticChunker:
         orphan_cluster_size: int = 2,
         max_tokens: int = 500,
     ):
+        """
+        Inicializa o SemanticChunker.
+
+        Args:
+            model_name: Nome do modelo SentenceTransformer para gerar embeddings
+            min_cluster_size: Tamanho mínimo de um cluster para ser considerado válido
+            orphan_cluster_size: Tamanho mínimo de um cluster de órfãos
+            max_tokens: Tamanho máximo de cada chunk em tokens
+        """
         self.model = SentenceTransformer(model_name)
         self.min_cluster_size = min_cluster_size
         self.orphan_cluster_size = orphan_cluster_size

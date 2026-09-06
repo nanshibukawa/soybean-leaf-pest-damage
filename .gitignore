@@ -57,7 +57,18 @@ scratch/
 *.drawio
 *.plantuml
 *.txt
+*.csv
 
 # Ignore all markdown files, but EXCLUDE README.md so it is tracked
 *.md
 !README.md
+
+# RAG / Qdrant
+src/rag/qdrant_storage/
+
+# PyTorch / Model Weights
+*.pt
+*.pth
+
+# Backups
+*.bak

@@ -32,14 +32,14 @@ query_colbert = list(colbert_model.query_embed([query_text]))[0].tolist()
 results = qdrant.query_points(
     collection_name=COLLECTION_NAME,
     prefetch=[
-        {
-            "prefetch": [
-                {"query": query_dense, "using": "dense", "limit": 10},
-                {"query": query_sparse, "using": "sparse", "limit": 10},
+        models.Prefetch(
+            prefetch=[
+                models.Prefetch(query=query_dense, using="dense", limit=10),
+                models.Prefetch(query=query_sparse, using="sparse", limit=10),
             ],
-            "query": models.FusionQuery(fusion=models.Fusion.RRF),
-            "limit": 20,
-        }
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=20,
+        )
     ],
     query=query_colbert,
     using="colbert",
@@ -51,8 +51,9 @@ max_score = max((result.score for result in results.points), default=1.0)
 for r in results.points:
     normalized_score = r.score / max_score
     print(f"Score: {normalized_score}")
-    print(f"Texto: {r.payload['text']}")
-    print(f"Texto: {r.payload['metadata']}")
+    payload = r.payload or {}
+    print(f"Texto: {payload.get('text', '')}")
+    print(f"Metadata: {payload.get('metadata')}")
 
     print("-" * 80)
 
@@ -65,11 +66,14 @@ if results.points:
     # Constrói o contexto incluindo a fonte e a página para maior rastreabilidade
     context_entries = []
     for i, r in enumerate(results.points):
-        # Acessa os metadados corretamente de dentro do payload
-        metadata = r.payload.get("metadata", {})
+        # Acessa o payload e os metadados com segurança
+        payload = r.payload or {}
+        metadata = payload.get("metadata") or {}
+        if not isinstance(metadata, dict):
+            metadata = {}
         source = metadata.get("source", "Desconhecida")
         page = metadata.get("page", "N/A")
-        text = r.payload.get("text", "")
+        text = payload.get("text", "")
         context_entries.append(
             f"--- DOCUMENTO {i+1} (Fonte: {source}, Pág: {page}) ---\n{text}"
         )
