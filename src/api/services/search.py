@@ -8,6 +8,7 @@ class SearchService:
         self.qdrant_client = QdrantClient(
             api_key=qdrant_api_key,
             url=qdrant_url,
+            timeout=30,
         )
         self.collection_name = collection_name
         self.embedding_service = EmbeddingService()
@@ -26,7 +27,7 @@ class SearchService:
                         models.Prefetch(query=query_sparse, using="sparse", limit=10),
                     ],
                     query=models.FusionQuery(fusion=models.Fusion.RRF),
-                    limit=15,
+                    limit=20,
                 )
             ],
             query=query_colbert,

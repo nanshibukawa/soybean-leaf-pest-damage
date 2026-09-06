@@ -143,7 +143,7 @@ class Ingestor:
                 f"⬆️ Fazendo upload de {len(all_points)} pontos para '{COLLECTION_NAME}'..."
             )
             self.vector_store.client.upload_points(
-                collection_name=COLLECTION_NAME, points=all_points, batch_size=20
+                collection_name=COLLECTION_NAME, points=all_points, batch_size=4
             )
             logger.info(f"✅ Sucesso! {len(all_points)} chunks indexados.")
         else:

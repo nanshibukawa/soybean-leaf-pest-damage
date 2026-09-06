@@ -15,6 +15,7 @@ class VectorStoreProvider:
         self.client = QdrantClient(
             url=os.getenv("QDRANT_URL"),
             api_key=os.getenv("QDRANT_API_KEY"),
+            timeout=90.0,
         )
 
     def create_collection(self, force_recreate: bool = False):

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class RAGRequest(BaseModel):
@@ -16,8 +16,8 @@ class RAGOutput(BaseModel):
     pest_name: str
     scientific_name: str | None = None
     summary: str
-    key_damages: list[str]
-    management_recommendations: list[str]
+    key_damages: list[str] = Field(description="Lista exaustiva e detalhada com todos os danos causados pela praga descritos no contexto.")
+    management_recommendations: list[str] = Field(description="Lista exaustiva e detalhada com todas as recomendações de controle e manejo mencionadas no contexto.")
     sources: list[RAGSource]
 
 
