@@ -221,7 +221,7 @@ class KerasTunerSearch:
             max_trials=max_trials,
             num_initial_points=5,
             directory="artifacts/tuning/keras_tuner",
-            project_name="mobilenetv3_bayesian",
+            project_name=f"{self.model_config.model_name.lower()}_bayesian",
             seed=42,
             overwrite=True,
         )

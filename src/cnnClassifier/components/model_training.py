@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from pathlib import Path
 import numpy as np
 import tensorflow as tf
@@ -6,6 +6,8 @@ import tensorflow as tf
 
 from cnnClassifier.entity.config_entity import ModelConfig
 from cnnClassifier.utils.logger import configure_logger
+from cnnClassifier.utils.model_utils import configure_backbone_trainability, create_sgd_optimizer
+
 
 physical_devices = tf.config.list_physical_devices("GPU")
 if physical_devices:
@@ -19,17 +21,19 @@ class ModelTraining:
     Componente para treinamento de modelos CNN.
     """
 
-    def __init__(self, model: tf.keras.Model, model_config: ModelConfig):
+    def __init__(self, model: tf.keras.Model, model_config: ModelConfig, train_dir: Optional[Path] = None):
         """
         Inicializa o componente de treinamento do modelo.
 
         Args:
             model: Modelo Keras pré-construído para treinar
             model_config: Configuração contendo parâmetros de treinamento (épocas, taxa de aprendizado, etc.)
+            train_dir: Diretório de treino opcional para cálculo de pesos da focal loss.
         """
         self.model_config = model_config
         self.model = model
         self.history = None
+        self.train_dir = train_dir
 
     def train_model(
         self, train_data: tf.data.Dataset, validation_data: tf.data.Dataset
@@ -37,47 +41,29 @@ class ModelTraining:
         try:
             logger.info("Iniciando preparação para Fine-Tuning...")
 
-            try:
-                backbone = self.model.get_layer("core_backbone")
-                logger.info(
-                    "🧠 Backbone 'core_backbone' encontrado com sucesso para treinamento."
-                )
-            except ValueError:
-                raise Exception(
-                    "Backbone não encontrado no modelo! Certifique-se de usar a ModelFactory."
-                )
-
-            # 2. Configurar o congelamento seletivo
-            backbone.trainable = True
-            total_layers = len(backbone.layers)
-
             is_from_scratch = (
                 not self.model_config.weights
                 or str(self.model_config.weights).lower() == "none"
             )
 
             if is_from_scratch:
-                logger.info(
-                    f"🔓 Treinamento from scratch detectado (sem pesos pré-treinados). "
-                    f"Mantendo todas as {total_layers} camadas aprendendo (trainable=True)."
-                )
+                try:
+                    backbone = self.model.get_layer("core_backbone")
+                    backbone.trainable = True
+                    logger.info(
+                        f"🔓 Treinamento from scratch detectado (sem pesos pré-treinados). "
+                        f"Mantendo todas as {len(backbone.layers)} camadas aprendendo (trainable=True)."
+                    )
+                except ValueError:
+                    logger.warning("⚠️ Backbone 'core_backbone' não encontrado no modelo customizado.")
             else:
-                layers_to_unfreeze = min(
-                    self.model_config.unfreeze_last_n_layers, total_layers
-                )
-                # Congela as iniciais, libera as últimas
-                for layer in backbone.layers[: total_layers - layers_to_unfreeze]:
-                    layer.trainable = False
-                for layer in backbone.layers[total_layers - layers_to_unfreeze :]:
-                    if not isinstance(layer, tf.keras.layers.BatchNormalization):
-                        layer.trainable = True
-                    else:
-                        layer.trainable = False
-                logger.info(
-                    f"🔓 Fine-tuning: {layers_to_unfreeze} camadas liberadas de {total_layers}."
+                configure_backbone_trainability(
+                    self.model,
+                    unfreeze_last_n=self.model_config.unfreeze_last_n_layers,
+                    backbone_name="core_backbone"
                 )
 
-            self._compile_model()
+            self._compile_model(train_data)
 
             logger.info("Iniciando fit do modelo...")
             # class_weight = class_weights or self.model_config.class_weights
@@ -106,14 +92,45 @@ class ModelTraining:
                 verbose=1,
                 mode="min",
             ),
-            tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_loss",
-                factor=0.2,
-                patience=5,
-                min_lr=1e-7,
-                verbose=1,
-            ),
         ]
+        
+        # Só adiciona ReduceLROnPlateau se o learning rate não for um schedule (ex: CosineDecay)
+        is_schedule = False
+        try:
+            # 1. Verificar se a configuração do otimizador indica um schedule
+            opt_config = self.model.optimizer.get_config()
+            if isinstance(opt_config.get("learning_rate"), dict):
+                is_schedule = True
+        except Exception:
+            pass
+
+        if not is_schedule:
+            # 2. Verificar se o atributo _learning_rate existe e é callable (como CosineDecay)
+            lr_obj = getattr(self.model.optimizer, "_learning_rate", None)
+            if lr_obj is not None:
+                if callable(lr_obj) or "LearningRateSchedule" in type(lr_obj).__name__ or isinstance(lr_obj, tf.keras.optimizers.schedules.LearningRateSchedule):
+                    is_schedule = True
+
+        if not is_schedule:
+            # 3. Fallback para verificar o learning_rate direto
+            lr_obj = getattr(self.model.optimizer, "learning_rate", None)
+            if lr_obj is not None:
+                if callable(lr_obj) or "LearningRateSchedule" in type(lr_obj).__name__ or isinstance(lr_obj, tf.keras.optimizers.schedules.LearningRateSchedule):
+                    is_schedule = True
+
+        if not is_schedule:
+            callbacks.append(
+                tf.keras.callbacks.ReduceLROnPlateau(
+                    monitor="val_loss",
+                    factor=0.2,
+                    patience=5,
+                    min_lr=1e-7,
+                    verbose=1,
+                )
+            )
+        else:
+            logger.info("ℹ️ Learning rate schedule detectado no otimizador. ReduceLROnPlateau desabilitado para evitar conflitos de escrita.")
+            
         return callbacks
 
     def get_training_metrics(self) -> Dict[str, Any]:
@@ -146,9 +163,49 @@ class ModelTraining:
             ),
         }
 
-    def _compile_model(self):
+    def _compile_model(self, train_data: tf.data.Dataset):
+        # Calcular passos dinâmicos por época
+        steps_per_epoch = tf.data.experimental.cardinality(train_data).numpy()
+        if steps_per_epoch < 0:
+            steps_per_epoch = 1  # Fallback seguro caso indefinido
+
+        # Configurar Otimizador Dinâmico
+        opt_name = self.model_config.optimizer_name.lower()
+        opt_params = self.model_config.optimizer_params or {}
+
+        if opt_name == "sgd":
+            initial_lr = opt_params.get("initial_lr", 1e-5)
+            peak_lr = self.model_config.learning_rate
+            momentum = opt_params.get("momentum", 0.9)
+            nesterov = opt_params.get("nesterov", True)
+            alpha = opt_params.get("alpha", 0.001)
+
+            optimizer = create_sgd_optimizer(
+                initial_lr=initial_lr,
+                peak_lr=peak_lr,
+                epochs=self.model_config.epochs,
+                steps_per_epoch=steps_per_epoch,
+                momentum=momentum,
+                nesterov=nesterov,
+                alpha=alpha,
+            )
+            logger.info(f"🏎️ Otimizador SGD com CosineDecay configurado (peak_lr={peak_lr})")
+        elif opt_name == "adam":
+            optimizer = tf.keras.optimizers.Adam(
+                learning_rate=self.model_config.learning_rate,
+                beta_1=opt_params.get("beta_1", 0.9),
+                beta_2=opt_params.get("beta_2", 0.999),
+                epsilon=opt_params.get("epsilon", 1e-07),
+            )
+            logger.info(f"🏎️ Otimizador Adam configurado (lr={self.model_config.learning_rate})")
+        else:
+            optimizer = tf.keras.optimizers.get(opt_name)
+            if hasattr(optimizer, "learning_rate"):
+                optimizer.learning_rate = self.model_config.learning_rate
+            logger.info(f"🏎️ Otimizador genérico '{opt_name}' configurado.")
+
         # Calcular os pesos alpha balanceados (Effective Number of Samples - Cui et al.)
-        train_dir = Path("artifacts/data/final/DatasetPests-split/train")
+        train_dir = self.train_dir or Path("artifacts/data/final/DatasetPests-split/train")
         alpha_weights = 1.0  # Fallback padrão
 
         if train_dir.exists():
@@ -182,13 +239,11 @@ class ModelTraining:
             gamma=1.5, alpha=alpha_weights
         )
         self.model.compile(
-            optimizer=tf.keras.optimizers.SGD(
-                learning_rate=self.model_config.learning_rate,
-            ),
+            optimizer=optimizer,
             # loss=self.model_config.loss_function,
             loss=loss_function,
             metrics=self.model_config.metrics,
         )
         logger.info(f"📉 Loss function: {loss_function}")
 
-        logger.info("Modelo SGD recompilado com configurações de treinamento")
+        logger.info("Modelo compilado com configurações de treinamento.")

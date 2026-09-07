@@ -107,6 +107,33 @@ tuning:
         step: 0.05
         default: 0.50
 
+    mobilenetv3large_finetune:
+      learning_rate:
+        min_value: 1e-4
+        max_value: 5e-2
+        sampling: "log"
+        default: 2e-3
+      dropout_rate:
+        min_value: 0.0
+        max_value: 0.3
+        step: 0.05
+        default: 0.2
+      l2_regularization:
+        min_value: 1e-7
+        max_value: 1e-4
+        sampling: "log"
+        default: 1e-5
+      unfreeze_last_n_layers:
+        min_value: 0
+        max_value: 40
+        step: 4
+        default: 32
+      top_k_percent:
+        min_value: 0.25
+        max_value: 0.85
+        step: 0.05
+        default: 0.50
+
     mobilenetv3small:
       learning_rate:
         min_value: 1e-4
@@ -512,9 +539,508 @@ tuning:
 # =============================================================================
 experiments:
   # ---------------------------------------------------------------------------
-  # MobileNetV3 Large - Modelo leve e rápido (baseline)
+  # Passo 1: Domain-Specific Pre-training (IP102 - 102 classes)
   # ---------------------------------------------------------------------------
-  mobilenetv3large:
+  ip102_pretrain:
+    model:
+      name: "EfficientNetV2B1"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [240, 240, 3]
+    training:
+      batch_size: 64
+      epochs: 50
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.01  # peak lr para treino inicial
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 102
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # Passo 2: Fine-Tuning Definitivo no DatasetPests
+  # ---------------------------------------------------------------------------
+  efficientnetv2b1_finetune:
+    model:
+      name: "EfficientNetV2B1"
+      use_pretrained: true
+      weights: "artifacts/models/ip102_pretrained_extractor.keras"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [240, 240, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001  # peak lr reduzido para fine-tuning
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # Passo 1: Domain-Specific Pre-training (IP102 - MobileNetV3Large)
+  # ---------------------------------------------------------------------------
+  ip102_mobilenetv3large_pretrain:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 50
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.01  # peak lr para treino inicial
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 102
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # Passo 2: Fine-Tuning Definitivo MobileNetV3Large (com pesos do IP102)
+  # ---------------------------------------------------------------------------
+  mobilenetv3large_finetune:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "artifacts/models/ip102_mobilenetv3large_extractor.keras"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001  # peak lr reduzido para fine-tuning
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # Passo 2 (Ablation / Baseline): Treino direto no DatasetPests (apenas ImageNet, SEM IP102)
+  # ---------------------------------------------------------------------------
+  efficientnetv2b1_imagenet_baseline:
+    model:
+      name: "EfficientNetV2B1"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [240, 240, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B0: Baseline direto no DatasetPests (apenas ImageNet)
+  # ---------------------------------------------------------------------------
+  efficientnetv2b0_imagenet_baseline:
+    model:
+      name: "EfficientNetV2B0"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B0: Passo 1 (Pré-treino de Domínio no IP102)
+  # ---------------------------------------------------------------------------
+  ip102_efficientnetv2b0_pretrain:
+    model:
+      name: "EfficientNetV2B0"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 40
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.01
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 102
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # EfficientNetV2B0: Passo 2 (Fine-Tuning / Tuning com Keras Tuner)
+  # ---------------------------------------------------------------------------
+  efficientnetv2b0_finetune:
+    model:
+      name: "EfficientNetV2B0"
+      use_pretrained: true
+      weights: "artifacts/models/ip102_efficientnetv2b0_extractor.keras"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # MobileNetV3Small: Baseline direto no DatasetPests (apenas ImageNet)
+  # ---------------------------------------------------------------------------
+  mobilenetv3small_imagenet_baseline:
+    model:
+      name: "MobileNetV3Small"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # MobileNetV3Small: Passo 1 (Pré-treino de Domínio no IP102)
+  # ---------------------------------------------------------------------------
+  ip102_mobilenetv3small_pretrain:
+    model:
+      name: "MobileNetV3Small"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 40
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.01
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 102
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # MobileNetV3Small: Passo 2 (Fine-Tuning / Tuning com Keras Tuner)
+  # ---------------------------------------------------------------------------
+  mobilenetv3small_finetune:
+    model:
+      name: "MobileNetV3Small"
+      use_pretrained: true
+      weights: "artifacts/models/ip102_mobilenetv3small_extractor.keras"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # Comparação com SOTA: Oxford-IIIT Pet Dataset (37 classes, split oficial)
+  # ---------------------------------------------------------------------------
+  oxford_pet_baseline:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.0002
+    dataset:
+      classes: 37
+
+  oxford_pet_optimized:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: true
+      use_sr_block: false
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.0002
+    dataset:
+      classes: 37
+
+  oxford_pet_sota:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 0
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 32 # menor batch size para evitar OOM pois treinaremos o backbone completo!
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.00002
+    dataset:
+      classes: 37
+
+  oxford_pet_sota_warmup:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 0
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.0002
+    dataset:
+      classes: 37
+
+  # ---------------------------------------------------------------------------
+  # Comparação e Validação: INSECT12C Dataset (10 classes, split estratificado)
+  # ---------------------------------------------------------------------------
+  insect12c_baseline:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.0002
+    dataset:
+      classes: 10
+
+  insect12c_optimized:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: true
+      use_sr_block: true
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 30
+      dropout_rate: 0.2
+      use_cutmix: false
+    optimizer:
+      learning_rate: 0.0002
+    dataset:
+      classes: 10
+
+  # ---------------------------------------------------------------------------
+  # Teste do Pipeline com o dataset Flower Photos (5 classes, leve e rápido)
+  # ---------------------------------------------------------------------------
+  flower_test:
     model:
       name: "MobileNetV3Large"
       use_pretrained: true
@@ -524,15 +1050,40 @@ experiments:
     image:
       size: [224, 224, 3]
     training:
-      batch_size: 512
-      epochs: 150
+      batch_size: 32
+      epochs: 5
       dropout_rate: 0.2
-      # class_weights:  # COMENTADO PARA EVITAR MODE COLLAPSE
-      #   0: 0.7
-      #   1: 1.0
-      #   2: 3.0
     optimizer:
-      learning_rate: 0.0001
+      learning_rate: 0.0002
+    dataset:
+      classes: 5
+
+  # ---------------------------------------------------------------------------
+  # MobileNetV3 Large - Modelo leve e rápido (baseline)
+  # ---------------------------------------------------------------------------
+  mobilenetv3large:
+    model:
+      name: "MobileNetV3Large"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 64
+      epochs: 80
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
 
   # ---------------------------------------------------------------------------
   # MobileNetV3 Small - Modelo ultra-leve para mobile
@@ -731,23 +1282,18 @@ experiments:
       weights: "imagenet"
       use_compression_blocks: false
       use_se_block: false
+      use_cbam: false
+      use_sr_block: false
     image:
       size: [240, 240, 3]
     training:
       batch_size: 128
       epochs: 120
       dropout_rate: 0.4
-      class_weights:
-        0: 1.0  # anticarsia_gemmatalis-larva
-        1: 1.0  # coccinellidae
-        2: 1.0  # diabrotica_speciosa
-        3: 0.6  # edessa_meditabunda (redutora de falsos positivos)
-        4: 2.2  # euschistus_heros (aumento de recall)
-        5: 1.0  # gastropoda
-        6: 1.0  # lagria_villosa
-        7: 1.0  # nezara_viridula
-        8: 1.5  # rhammatocerus_schistocercoides (aumento de recall)
-        9: 1.2  # spodoptera_albula (aumento de recall)
+      # class_weights:
+      #   0: 0.7
+      #   1: 1.0
+      #   2: 3.5
     optimizer:
       learning_rate: 0.0001
 

@@ -286,17 +286,21 @@ class DataSplitter:
         with tf.device('/CPU:0'):
             train_data, _, _ = self._load_all_splits()
 
-            # O dataset já vem batchado pelo image_dataset_from_directory
-            # CutMix operates on (images, labels) batches
-            seed = self.data_split_config.random_seed
-            cutmix = tf.keras.layers.CutMix(seed=seed)
-            logger.info(f"CutMix habilitado com seed: {seed}")
+            if getattr(self.data_split_config, "use_cutmix", True):
+                # O dataset já vem batchado pelo image_dataset_from_directory
+                # CutMix operates on (images, labels) batches
+                seed = self.data_split_config.random_seed
+                cutmix = tf.keras.layers.CutMix(seed=seed)
+                logger.info(f"CutMix habilitado com seed: {seed}")
 
-            def apply_cutmix(images, labels):
-                outputs = cutmix({"images": images, "labels": labels})
-                return outputs["images"], outputs["labels"]
+                def apply_cutmix(images, labels):
+                    outputs = cutmix({"images": images, "labels": labels})
+                    return outputs["images"], outputs["labels"]
 
-            train_data = train_data.map(apply_cutmix, num_parallel_calls=tf.data.AUTOTUNE)
+                train_data = train_data.map(apply_cutmix, num_parallel_calls=tf.data.AUTOTUNE)
+            else:
+                logger.info("CutMix desabilitado para o treinamento final.")
+                
             train_data = train_data.prefetch(tf.data.AUTOTUNE)
         return train_data
 
@@ -323,6 +327,7 @@ class DataSplitter:
             # Mapeia dinamicamente os nomes das pastas correspondentes no diretório de teste
             test_subdirs = [d.name for d in test_dir.iterdir() if d.is_dir()]
             mapped_test_class_names = []
+            unmapped_count = 0
             for class_name in self.class_names:
                 matched = None
                 for subdir in test_subdirs:
@@ -332,8 +337,16 @@ class DataSplitter:
                 if matched:
                     mapped_test_class_names.append(matched)
                 else:
-                    logger.warning(f"⚠️ Não foi possível mapear a classe {class_name} para as pastas de teste. Usando fallback.")
                     mapped_test_class_names.append(class_name)
+                    unmapped_count += 1
+
+            if unmapped_count == len(self.class_names):
+                logger.warning(f"⚠️ Nenhuma classe do dataset ({len(self.class_names)} classes) foi mapeada para as pastas de {test_dir}. Ignorando teste externo e usando split original.")
+                _, _, test_data = self._load_all_splits()
+                return test_data
+
+            if unmapped_count > 0:
+                logger.warning(f"⚠️ {unmapped_count} de {len(self.class_names)} classes não foram mapeadas para as pastas de teste. Usando fallbacks para as não mapeadas.")
 
             if self.resize_with_pad:
                 logger.info("📐 Utilizando redimensionamento com Aspect-Ratio Padding (Letterbox) no teste externo")
