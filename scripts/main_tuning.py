@@ -2,6 +2,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
+os.environ["MLFLOW_SKIP_PIP_REQUIREMENTS_DETECTION"] = "true"
 
 import logging
 from pathlib import Path
@@ -112,16 +113,20 @@ def main(
 
         # if use_mlflow:
 
+        dagshub.init(
+            repo_owner="nanshibukawa", repo_name="soybean-leaf-pest-damage", mlflow=True
+        )
+
         # Verificar e restaurar experimento deletado, se necessário
         experiment_name = f"tuning-{experiment}"
         try:
-            experiment = mlflow.get_experiment_by_name(experiment_name)
-            if experiment and experiment.lifecycle_stage == "deleted":
+            exp_obj = mlflow.get_experiment_by_name(experiment_name)
+            if exp_obj and exp_obj.lifecycle_stage == "deleted":
                 logger.warning(
                     f"⚠️ Experimento '{experiment_name}' estava deletado. Restaurando..."
                 )
                 mlflow.tracking.MlflowClient().restore_experiment(
-                    experiment.experiment_id
+                    exp_obj.experiment_id
                 )
                 logger.info(
                     f"✅ Experimento '{experiment_name}' restaurado com sucesso!"
@@ -129,9 +134,6 @@ def main(
         except Exception as e:
             logger.warning(f"⚠️ Erro ao verificar experimento: {e}")
 
-        dagshub.init(
-            repo_owner="nanshibukawa", repo_name="soybean-leaf-pest-damage", mlflow=True
-        )
         mlflow.set_experiment(experiment_name)
 
         # 📊 Configurar coleta de system metrics
@@ -238,6 +240,10 @@ def main(
 
             if stage2_result["success"]:
                 logger.info("✅ Stage 2 completo!")
+                train_ds = stage2_result["train_data"]
+                discovered_classes = train_ds.element_spec[1].shape[-1]
+                logger.info(f"🔍 Ajustando num_classes dinamicamente para: {discovered_classes}")
+                model_config.num_classes = discovered_classes
             else:
                 logger.error(f"❌ Stage 2 falhou: {stage2_result['error']}")
                 return stage2_result
@@ -256,6 +262,7 @@ def main(
                 train_ratio=model_config.train_ratio,
                 val_ratio=model_config.val_ratio,
                 test_ratio=model_config.test_ratio,
+                use_cutmix=model_config.use_cutmix,
             )
 
             data_splitter = DataSplitter(
@@ -374,6 +381,7 @@ def main(
 
             # ===== STAGE 5: Model Evaluation =====
             logger.info("\n🔄 === Stage 5: Model Evaluation (Detalhada) ===")
+            test_result = None
             try:
                 eval_pipeline = ModelEvaluationPipeline(
                     model_config=model_config,
@@ -546,6 +554,12 @@ def main(
             if evaluation_dir and Path(evaluation_dir).exists():
                 mlflow.log_artifacts(evaluation_dir, artifact_path="evaluation")
 
+            # Logar artefatos de avaliação do teste se disponíveis
+            if test_result and isinstance(test_result, dict) and test_result.get("success"):
+                test_eval_dir = test_result.get("evaluation_dir")
+                if test_eval_dir and Path(test_eval_dir).exists():
+                    mlflow.log_artifacts(test_eval_dir, artifact_path="evaluation_test")
+
             keras_path = (
                 Path("artifacts")
                 / "models"
@@ -596,11 +610,15 @@ def main(
                 mlflow.log_artifact(summary_path, artifact_path="model_architecture")
                 logger.info("📝 Model summary logado no MLflow")
 
-            mlflow.keras.log_model(
-                best_model,
-                "model",
-                registered_model_name=f"{model_config.model_name}_classifier",
-            )
+            try:
+                mlflow.keras.log_model(
+                    best_model,
+                    "model",
+                    registered_model_name=f"{model_config.model_name}_classifier",
+                    pip_requirements=["keras", "tensorflow"],
+                )
+            except Exception as mlflow_err:
+                logger.warning(f"⚠️ Não foi possível logar o modelo no MLflow: {mlflow_err}")
 
             return {
                 "config": model_config,

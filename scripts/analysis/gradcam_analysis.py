@@ -124,9 +124,17 @@ if __name__ == "__main__":
         if os.path.exists(local_user_path):
             model_path = local_user_path
 
+    from cnnClassifier.models.custom_blocks import SpatialAttentionFeatureReduction, ResidualSRCNNBlock
+    from cnnClassifier.components.prepare_model import PreprocessingLayer
+
     model = tf.keras.models.load_model(
         model_path,
-        custom_objects={"TopKGlobalAveragePooling2D": TopKGlobalAveragePooling2D},
+        custom_objects={
+            "TopKGlobalAveragePooling2D": TopKGlobalAveragePooling2D,
+            "SpatialAttentionFeatureReduction": SpatialAttentionFeatureReduction,
+            "PreprocessingLayer": PreprocessingLayer,
+            "ResidualSRCNNBlock": ResidualSRCNNBlock
+        },
     )
 
     # Encontrar automaticamente a última camada convolucional 4D (mesmo em modelos aninhados)

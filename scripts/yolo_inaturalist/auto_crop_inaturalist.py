@@ -39,14 +39,22 @@ def main():
         print("   pip install ultralytics")
         sys.exit(1)
         
-    if not MODEL_PATH.exists():
-        print(f"❌ Modelo treinado não encontrado em: {MODEL_PATH}")
-        print("Por favor, execute primeiro o treinamento do detector:")
-        print("   python scripts/yolo_inaturalist/train_yolo.py")
-        sys.exit(1)
+    model_path = MODEL_PATH
+    if not model_path.exists():
+        # Fallback de busca em runs/detect
+        candidates = list(ROOT_DIR.glob("runs/detect/**/best.pt")) + list(ROOT_DIR.glob("artifacts/yolo_runs/**/best.pt"))
+        if candidates:
+            # Pegar o arquivo mais recente
+            model_path = sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True)[0]
+            print(f"⚠️ Usando fallback do modelo mais recente encontrado: {model_path}")
+        else:
+            print(f"❌ Modelo treinado não encontrado em: {MODEL_PATH}")
+            print("Por favor, execute primeiro o treinamento do detector:")
+            print("   python scripts/yolo_inaturalist/train_yolo.py")
+            sys.exit(1)
         
-    print(f"🚀 Carregando detector treinado de: {MODEL_PATH.name}...")
-    model = YOLO(MODEL_PATH)
+    print(f"🚀 Carregando detector treinado de: {model_path}...")
+    model = YOLO(model_path)
     
     # Criar pasta de saída se necessário
     OUTPUT_BASE_DIR.mkdir(parents=True, exist_ok=True)
