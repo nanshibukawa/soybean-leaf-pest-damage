@@ -77,8 +77,9 @@ class MLflowHyperModel(kt.HyperModel):
                 gpus = tf.config.list_physical_devices("GPU")
                 if gpus:
                     for gpu in gpus:
-                        tf.config.experimental.reset_memory_stats(gpu.name)
-                        logger.debug(f"🧹 Memória GPU {gpu.name} resetada")
+                        dev_name = gpu.name.replace("/physical_device:", "")
+                        tf.config.experimental.reset_memory_stats(dev_name)
+                        logger.debug(f"🧹 Memória GPU {dev_name} resetada")
             except Exception as e:
                 logger.debug(f"⚠️ Erro ao limpar GPU: {e}")
             finally:
