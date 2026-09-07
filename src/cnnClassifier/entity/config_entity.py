@@ -50,6 +50,7 @@ class DataSplitterConfig(BaseModel):
     train_ratio: float = Field(..., description="Proporção dos dados para treino")
     val_ratio: float = Field(..., description="Proporção dos dados para validação")
     test_ratio: float = Field(..., description="Proporção dos dados para teste")
+    use_cutmix: bool = Field(default=True, description="Habilitar CutMix no treino")
 
 
 class ModelConfig(BaseModel):
@@ -78,6 +79,8 @@ class ModelConfig(BaseModel):
     metrics: List[str] = Field(..., description="Métricas de avaliação")
     class_weights: Optional[Dict[int, float]] = None
     use_pretrained: bool = Field(default=True, description="Usar modelo pré-treinado")
+    use_cutmix: bool = Field(default=True, description="Habilitar CutMix no treino")
+    dense_units: int = Field(default=128, description="Número de neurônios na camada densa intermediária")
     l2_regularization: float = Field(
         default=0.01, description="L2 regularization para camadas Dense"
     )
@@ -91,6 +94,12 @@ class ModelConfig(BaseModel):
     )
     use_se_block: bool = Field(
         default=True, description="Usar bloco Squeeze-and-Excitation"
+    )
+    use_cbam: bool = Field(
+        default=False, description="Usar bloco de atenção CBAM"
+    )
+    use_sr_block: bool = Field(
+        default=False, description="Usar bloco de Super-Resolução Residual"
     )
     # use_data_augmentation: bool = Field(
     #     default=True, description="Usar data augmentation no modelo"
@@ -244,10 +253,14 @@ class ModelConfig(BaseModel):
                 random_seed=config["random_seed"],
                 class_weights=class_weights,
                 use_pretrained=config["model"].get("use_pretrained", True),
+                use_cutmix=config["training"].get("use_cutmix", True),
+                dense_units=config["model"].get("dense_units", 128),
                 use_compression_blocks=config["model"].get(
                     "use_compression_blocks", True
                 ),
                 use_se_block=config["model"].get("use_se_block", True),
+                use_cbam=config["model"].get("use_cbam", False),
+                use_sr_block=config["model"].get("use_sr_block", False),
                 top_k_percent=config["training"].get("top_k_percent", 0.15),
                 # use_data_augmentation=config["model"].get(
                 #     "use_data_augmentation", True

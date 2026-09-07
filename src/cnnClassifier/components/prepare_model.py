@@ -6,7 +6,7 @@ import tensorflow as tf
 
 from cnnClassifier.utils.logger import configure_logger
 from cnnClassifier.entity.config_entity import ModelConfig, ImageConfig
-from cnnClassifier.models.custom_blocks import compression_block, se_block
+from cnnClassifier.models.custom_blocks import compression_block, se_block, cbam_block, ResidualSRCNNBlock
 from cnnClassifier.models.factory import ModelFactory
 from cnnClassifier.components.augmentation_pipeline import AugmentationPipeline
 
@@ -116,23 +116,50 @@ class PrepareModel:
         data_augmentation_pipeline = AugmentationPipeline(self.model_config)
         self.data_augmentation = data_augmentation_pipeline.data_augmentation()
 
-    def build_model(self) -> tf.keras.Model:
+    def build_model(self, num_classes: int = None) -> tf.keras.Model:
         """Constrói modelo - custom, pré-treinado ou transformer baseado na configuração"""
         logger.info(f"🏗️ Construindo modelo {self.model_config.model_name}")
 
         use_pretrained = getattr(self.model_config, "use_pretrained", False)
         if use_pretrained:
-            return self._build_pretrained_model()
+            return self._build_pretrained_model(num_classes=num_classes)
         else:
-            return self._build_custom_model()
+            return self._build_custom_model(num_classes=num_classes)
 
-    def _build_pretrained_model(self) -> tf.keras.Model:
+    def _build_pretrained_model(self, num_classes: int = None) -> tf.keras.Model:
         """
         Constrói e retorna um modelo Keras pré-treinado para classificação de imagens.
 
         Returns:
             tf.keras.Model: Modelo compilado pronto para treinamento
         """
+        # Se os pesos forem um caminho de arquivo existente (extrator pré-treinado do Passo 1)
+        if self.model_config.weights and os.path.exists(self.model_config.weights):
+            logger.info(f"🔄 Carregando extrator de características do Passo 1: {self.model_config.weights}")
+            from cnnClassifier.models.custom_blocks import ResidualSRCNNBlock
+            custom_objects = {
+                "TopKGlobalAveragePooling2D": TopKGlobalAveragePooling2D,
+                "PreprocessingLayer": PreprocessingLayer,
+                "ResidualSRCNNBlock": ResidualSRCNNBlock
+            }
+            extractor = tf.keras.models.load_model(self.model_config.weights, custom_objects=custom_objects)
+            
+            # Acoplar nova cabeça de classificação
+            classes = num_classes if num_classes is not None else self.model_config.num_classes
+            l2_val = getattr(self.model_config, "l2_regularization", 0.01)
+            
+            x = extractor.output
+            outputs = tf.keras.layers.Dense(
+                classes,
+                activation="softmax",
+                kernel_regularizer=tf.keras.regularizers.L2(l2_val),
+                name="classification_head",
+            )(x)
+            
+            modelo = tf.keras.Model(inputs=extractor.input, outputs=outputs)
+            logger.info(f"✅ Nova cabeça de classificação acoplada ao extrator ({classes} classes).")
+            return modelo
+
         model_name = self.model_config.model_name.lower()
 
         if "mobilevit" in model_name:
@@ -175,6 +202,11 @@ class PrepareModel:
             # Emvolvemos a função em uma camada Lambda para salvá-la no grafo .h5
             # x = tf.keras.layers.Lambda(preprocess_layer, name="preprocessing_lambda")(x)
             x = PreprocessingLayer(model_name=self.model_config.model_name, name="preprocessing_layer")(x)
+
+        use_sr_block = getattr(self.model_config, "use_sr_block", False)
+        logger.info(f"🔒 Using SR (Super-Resolution) Block: {use_sr_block}")
+        if use_sr_block:
+            x = ResidualSRCNNBlock(name="residual_srcnn_block")(x)
         # IMPORTANTE: Chamar modelo base com training=False para manter BatchNormalization em modo de inferência
         # Isto é crítico durante fine-tuning: impede que as estatísticas armazenadas (mean/variance)
         # sejam sobrescritas pelas estatísticas do lote atual, destruindo o conhecimento pré-treinado
@@ -200,19 +232,26 @@ class PrepareModel:
             self.model_config, "use_compression_blocks", False
         )
         use_se_block = getattr(self.model_config, "use_se_block", False)
+        use_cbam = getattr(self.model_config, "use_cbam", False)
 
         logger.info(f"🔒 Using Compression Blocks: {use_compression_blocks}")
         logger.info(f"🔒 Using Squeeze-and-Excitation (SE) Block: {use_se_block}")
+        logger.info(f"🔒 Using CBAM Attention Block: {use_cbam}")
 
-        # Blocos compressions e SE após o backbone (condicionais e apenas para tensores 4D / CNNs)
+        # Blocos compressions, SE e CBAM após o backbone (condicionais e apenas para tensores 4D / CNNs)
         if len(x.shape) == 4:
             if use_compression_blocks:
                 x = compression_block(32, l2_reg=l2_val)(x)
                 if use_se_block:
                     x = se_block(x)
+                if use_cbam:
+                    x = cbam_block(x)
                 x = compression_block(64, l2_reg=l2_val)(x)
-            elif use_se_block:
-                x = se_block(x)
+            else:
+                if use_se_block:
+                    x = se_block(x)
+                if use_cbam:
+                    x = cbam_block(x)
 
             # --- Top-K Pooling para focar nos sinais mais fortes (danos) ---
             logger.info(
@@ -242,22 +281,24 @@ class PrepareModel:
         # x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
 
         # --- NOVO CÓDIGO (ConvGeM-next: BN antes de ReLU e Dropout) ---
-        x = tf.keras.layers.Dense(
-            128,
-            activation=None,
-            kernel_constraint=tf.keras.constraints.MaxNorm(3),
-            # kernel_regularizer=tf.keras.regularizers.L2(0.01),
-            kernel_regularizer=tf.keras.regularizers.L2(l2_val),
-            name="dense_128",
-        )(x)
+        dense_units = getattr(self.model_config, "dense_units", 128)
+        if dense_units > 0:
+            x = tf.keras.layers.Dense(
+                dense_units,
+                activation=None,
+                kernel_constraint=tf.keras.constraints.MaxNorm(3),
+                kernel_regularizer=tf.keras.regularizers.L2(l2_val),
+                name=f"dense_{dense_units}",
+            )(x)
 
-        x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.ReLU()(x)
-        x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
+            x = tf.keras.layers.BatchNormalization()(x)
+            x = tf.keras.layers.ReLU()(x)
+            x = tf.keras.layers.Dropout(self.model_config.dropout_rate)(x)
+            
+        classes = num_classes if num_classes is not None else self.model_config.num_classes
         outputs = tf.keras.layers.Dense(
-            self.model_config.num_classes,
+            classes,
             activation="softmax",
-            # kernel_regularizer=tf.keras.regularizers.L2(0.01),
             kernel_regularizer=tf.keras.regularizers.L2(l2_val),
             name="classification_head",
         )(x)
@@ -270,7 +311,7 @@ class PrepareModel:
         return modelo
 
     def _build_custom_model(
-        self, activation_last_layer: str = "softmax"
+        self, activation_last_layer: str = "softmax", num_classes: int = None
     ) -> tf.keras.Model:
         """
         Constrói e retorna um modelo Keras para classificação de imagens.
@@ -307,7 +348,7 @@ class PrepareModel:
                 tf.keras.layers.Dropout(self.model_config.dropout_rate),
                 # SAÍDA COM L2 REGULARIZATION
                 tf.keras.layers.Dense(
-                    self.model_config.num_classes,
+                    num_classes if num_classes is not None else self.model_config.num_classes,
                     activation=activation_last_layer,
                     kernel_regularizer=tf.keras.regularizers.L2(l2_val),
                 ),
