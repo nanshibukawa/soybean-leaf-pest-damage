@@ -55,10 +55,10 @@ def extract_zips():
             zip_ref.extractall(extract_to)
         logger.info(f"Concluído: {zip_path.name}")
 
-def crop_objects(use_10_classes: bool = True):
+def crop_objects(use_10_classes: bool = True, min_size: int = 32, margin: float = 0.0):
     """Parse XML annotations and crop objects into class-based directories."""
     output_dir = OUTPUT_10_CLASSES_DIR if use_10_classes else OUTPUT_12_CLASSES_DIR
-    logger.info(f"Iniciando recorte dos insetos. Destino: {output_dir}")
+    logger.info(f"Iniciando recorte dos insetos (tamanho mínimo: {min_size}px). Destino: {output_dir}")
     
     # Create output dir
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -105,19 +105,34 @@ def crop_objects(use_10_classes: bool = True):
                         
                         # Bounding box
                         bndbox = obj.find("bndbox")
-                        xmin = int(float(bndbox.find("xmin").text))
-                        ymin = int(float(bndbox.find("ymin").text))
-                        xmax = int(float(bndbox.find("xmax").text))
-                        ymax = int(float(bndbox.find("ymax").text))
+                        xmin_val = int(float(bndbox.find("xmin").text))
+                        ymin_val = int(float(bndbox.find("ymin").text))
+                        xmax_val = int(float(bndbox.find("xmax").text))
+                        ymax_val = int(float(bndbox.find("ymax").text))
                         
-                        # Garantir limites da imagem
-                        xmin = max(0, xmin)
-                        ymin = max(0, ymin)
-                        xmax = min(width, xmax)
-                        ymax = min(height, ymax)
+                        # Calcular dimensões originais
+                        w_orig = xmax_val - xmin_val
+                        h_orig = ymax_val - ymin_val
                         
-                        # Pular se box for inválida ou sem área
-                        if xmax <= xmin or ymax <= ymin:
+                        # Aplicar margem
+                        if margin > 0.0:
+                            margin_w = int(w_orig * margin)
+                            margin_h = int(h_orig * margin)
+                            xmin = max(0, xmin_val - margin_w)
+                            ymin = max(0, ymin_val - margin_h)
+                            xmax = min(width, xmax_val + margin_w)
+                            ymax = min(height, ymax_val + margin_h)
+                        else:
+                            xmin = max(0, xmin_val)
+                            ymin = max(0, ymin_val)
+                            xmax = min(width, xmax_val)
+                            ymax = min(height, ymax_val)
+                            
+                        w = xmax - xmin
+                        h = ymax - ymin
+                        
+                        # Pular se box for inválida ou menor que o limiar mínimo
+                        if w < min_size or h < min_size:
                             continue
                             
                         # Recortar
@@ -152,6 +167,8 @@ if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(description="Extrai e recorta o dataset INSECT12C baseando-se nos XMLs Pascal VOC.")
     parser.add_argument("--classes-12", action="store_true", help="Gera o dataset com 12 classes originais (separa ninfas e adultos).")
+    parser.add_argument("--min-size", type=int, default=32, help="Tamanho mínimo (largura e altura) do crop para salvá-lo.")
+    parser.add_argument("--margin", type=float, default=0.20, help="Fator de expansão da margem (ex: 0.20 para 20%).")
     args = parser.parse_args()
     
     # 1. Extrair zips se necessário
@@ -159,4 +176,4 @@ if __name__ == "__main__":
     
     # 2. Recortar
     use_10_classes = not args.classes_12
-    crop_objects(use_10_classes=use_10_classes)
+    crop_objects(use_10_classes=use_10_classes, min_size=args.min_size, margin=args.margin)

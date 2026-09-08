@@ -85,10 +85,14 @@ pip install .[image-processing]
 │   ├── analysis/               # Grad-CAM e explicabilidade
 │   ├── main.py                 # Pipeline principal do classificador
 │   └── main_tuning.py          # Busca de hiperparâmetros (Keras Tuner)
+├── docs/                       # Relatórios e documentação técnica do mestrado
+│   ├── relatorios_experimentos/# Análises de loss, pré-treino IP102, etc.
+│   ├── preparacao_dados/       # Pipeline de Pré-Processamento (pipeline_preprocessamento.md)
+│   └── pesquisa_e_entrevistas/ # Anotações de pesquisa e roteiros
 ├── artifacts/                  # Artefatos do projeto
 │   ├── data/                   # Datasets organizados (raw, processed, final, yolo)
 │   ├── data_ingestion/         # Ingestão bruta de dados
-│   ├── models/                 # Modelos CNN salvos
+│   ├── models/                 # Modelos salvos (.keras, .pt)
 │   └── yolo_runs/              # Treinamentos do detector YOLOv8
 └── logs/                       # Logs de execução
 ```

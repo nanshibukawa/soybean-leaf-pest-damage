@@ -21,7 +21,9 @@ TARGET_SPECIES = {
     "anticarsia_gemmatalis": {
         "taxon_id": 213809,  # ID real de Anticarsia gemmatalis (10.000+ obs)
         "display_name": "Lagarta-da-soja",
-        "quality_grade": "research"
+        "quality_grade": "research",
+        "term_id": 1,        # ID do atributo controlado 'Life Stage'
+        "term_value_id": 6   # ID do valor 'Larva' (Lagarta)
     },
     "euschistus_heros": {
         "taxon_id": 544061,  # ID real de Euschistus heros (430+ obs)
@@ -36,7 +38,9 @@ TARGET_SPECIES = {
     "spodoptera_albula": {
         "taxon_id": 424930,  # ID real de Spodoptera albula
         "display_name": "Lagarta-das-vagens (Spodoptera albula)",
-        "quality_grade": "research"
+        "quality_grade": "research",
+        "term_id": 1,        # ID do atributo controlado 'Life Stage'
+        "term_value_id": 6   # ID do valor 'Larva' (Lagarta)
     }
 }
 
@@ -111,6 +115,11 @@ def download_species_images(name, info, limit=400):
             "per_page": 100,
             "page": page
         }
+        
+        if "term_id" in info:
+            params["term_id"] = info["term_id"]
+        if "term_value_id" in info:
+            params["term_value_id"] = info["term_value_id"]
         
         query_string = urllib.parse.urlencode(params)
         api_url = f"https://api.inaturalist.org/v1/observations?{query_string}"
