@@ -79,7 +79,7 @@ def find_fallback_match(csv_name: str, disk_files: dict) -> Path:
         return best_match
     return None
 
-def crop_dataset_pests():
+def crop_dataset_pests(margin: float = 0.0):
     logger.info(f"Iniciando recorte do DatasetPests. Origem: {DATASET_BASE_DIR}")
     logger.info(f"Destino: {OUTPUT_DIR}")
 
@@ -198,16 +198,22 @@ def crop_dataset_pests():
                                 continue
 
                             # Calcular pixels
-                            xmin = int((x / 100.0) * w)
-                            ymin = int((y / 100.0) * h)
-                            xmax = int(((x + width) / 100.0) * w)
-                            ymax = int(((y + height) / 100.0) * h)
+                            xmin_val = int((x / 100.0) * w)
+                            ymin_val = int((y / 100.0) * h)
+                            xmax_val = int(((x + width) / 100.0) * w)
+                            ymax_val = int(((y + height) / 100.0) * h)
 
-                            # Limitar coordenadas às dimensões da imagem
-                            xmin = max(0, xmin)
-                            ymin = max(0, ymin)
-                            xmax = min(w, xmax)
-                            ymax = min(h, ymax)
+                            if margin > 0.0:
+                                box_w = xmax_val - xmin_val
+                                box_h = ymax_val - ymin_val
+                                margin_w = int(box_w * margin)
+                                margin_h = int(box_h * margin)
+                                xmin = max(0, xmin_val - margin_w)
+                                ymin = max(0, ymin_val - margin_h)
+                                xmax = min(w, xmax_val + margin_w)
+                                ymax = min(h, ymax_val + margin_h)
+                            else:
+                                xmin, ymin, xmax, ymax = xmin_val, ymin_val, xmax_val, ymax_val
 
                             # Pular se área for inválida
                             if xmax <= xmin or ymax <= ymin:
@@ -232,4 +238,8 @@ def crop_dataset_pests():
     logger.info(f"Concluído! Processadas {total_images_processed} imagens originais, gerando {total_crops_saved} recortes no total.")
 
 if __name__ == "__main__":
-    crop_dataset_pests()
+    import argparse
+    parser = argparse.ArgumentParser(description="Recorta o DatasetPests com margem configurável.")
+    parser.add_argument("--margin", type=float, default=0.20, help="Fator de expansão da margem (ex: 0.20 para 20%).")
+    args = parser.parse_args()
+    crop_dataset_pests(margin=args.margin)

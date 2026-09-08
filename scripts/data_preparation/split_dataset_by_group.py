@@ -39,9 +39,23 @@ def get_group_id(filename: str) -> str:
     # 6. Normalizar
     return name.lower().strip()
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser(description="Divide o dataset por imagem-mãe para evitar vazamento.")
+    parser.add_argument(
+        "--only-teachers",
+        action="store_true",
+        help="Usa somente as imagens originais dos professores, descartando as do iNaturalist (prefixadas com 'inat_')"
+    )
+    args = parser.parse_args()
+
     print(f"📁 Diretório de origem: {INPUT_DIR}")
     print(f"📁 Diretório de destino: {OUTPUT_DIR}")
+    if args.only_teachers:
+        print("⚠️ Modo: Apenas Dataset dos Professores (ignora imagens do iNaturalist)")
+    else:
+        print("🌍 Modo: Dataset Misto (Professores + iNaturalist)")
 
     if not INPUT_DIR.exists():
         print(f"❌ Erro: Diretório de origem {INPUT_DIR} não encontrado.")
@@ -73,6 +87,10 @@ def main():
             f for f in folder.iterdir()
             if f.is_file() and f.suffix.lower() in {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
         ]
+        
+        # Filtrar se solicitado apenas dataset dos professores
+        if args.only_teachers:
+            crop_files = [f for f in crop_files if not f.name.startswith("inat_")]
 
         if not crop_files:
             print(f"⚠️ Classe {class_name} não possui imagens. Pulando...")

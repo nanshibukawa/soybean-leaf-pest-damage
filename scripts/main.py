@@ -3,6 +3,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Só erros críticos
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"
 os.environ["XLA_FLAGS"] = "--xla_gpu_strict_conv_algorithm_picker=false"
 
+import argparse
 from pathlib import Path
 import warnings
 
@@ -24,15 +25,36 @@ logger = configure_logger(__name__)
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Pipeline principal de treinamento de classificação")
+    parser.add_argument(
+        "--experiment",
+        type=str,
+        default="mobilenetv3large",
+        help="Nome do experimento no YAML (ex: efficientnetv2b1_finetune, mobilenetv3large)"
+    )
+    parser.add_argument(
+        "--dagshub",
+        action="store_true",
+        help="Sincroniza as métricas do MLflow com o seu repositório no DagsHub"
+    )
+    args = parser.parse_args()
+
+    # Inicializar DagsHub se solicitado ou via variável de ambiente
+    if args.dagshub or os.getenv("USE_DAGSHUB", "false").lower() == "true":
+        try:
+            import dagshub
+            dagshub.init(repo_owner="nanshibukawa", repo_name="soybean-leaf-pest-damage", mlflow=True)
+            logger.info("📡 DagsHub MLflow remoto ativado com sucesso!")
+        except Exception as e:
+            logger.warning(f"⚠️ Não foi possível inicializar o DagsHub: {e}")
+
     logger.info("🚀 Iniciando pipeline de machine learning...")
 
     try:
         # ===== STAGE 0: Load Configs =====
         logger.info("📋 Carregando configurações...")
-        # model_config = ModelConfig.from_yaml(config_path="model_params.yaml")
-        # model_config = ModelConfig.from_yaml("model_params.yaml", experiment="vgg_transfer")
         model_config = ModelConfig.from_yaml(
-            "model_params.yaml", experiment="mobilenetv3large"
+            "model_params.yaml", experiment=args.experiment
         )
 
         logger.info(f"✅ Configuração carregada: {model_config.model_name}")
@@ -63,6 +85,11 @@ def main():
 
         if stage2_result["success"]:
             logger.info("✅ Stage 2 completo!")
+            # Detecta dinamicamente a quantidade de classes no dataset carregado
+            train_ds = stage2_result["train_data"]
+            discovered_classes = train_ds.element_spec[1].shape[-1]
+            logger.info(f"🔍 Ajustando num_classes dinamicamente para: {discovered_classes}")
+            model_config.num_classes = discovered_classes
         else:
             logger.error(f"❌ Stage 2 falhou: {stage2_result['error']}")
             return stage2_result
