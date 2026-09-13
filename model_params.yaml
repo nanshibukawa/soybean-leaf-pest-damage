@@ -902,6 +902,105 @@ experiments:
       test_ratio: 0.0
 
   # ---------------------------------------------------------------------------
+  # ConvNeXtTiny: Baseline direto no DatasetPests (apenas ImageNet)
+  # ---------------------------------------------------------------------------
+  convnexttiny_imagenet_baseline:
+    model:
+      name: "ConvNeXtTiny"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 32
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # ConvNeXtTiny: Passo 1 (Pré-treino de Domínio no IP102)
+  # ---------------------------------------------------------------------------
+  ip102_convnexttiny_pretrain:
+    model:
+      name: "ConvNeXtTiny"
+      use_pretrained: true
+      weights: "imagenet"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 32
+      epochs: 40
+      dropout_rate: 0.2
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.01
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 102
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
+  # ConvNeXtTiny: Passo 2 (Fine-Tuning / Tuning com Keras Tuner)
+  # ---------------------------------------------------------------------------
+  convnexttiny_finetune:
+    model:
+      name: "ConvNeXtTiny"
+      use_pretrained: true
+      weights: "artifacts/models/ip102_convnexttiny_extractor.keras"
+      use_compression_blocks: false
+      use_se_block: false
+      use_cbam: false
+      use_sr_block: false
+      dense_units: 128
+    image:
+      size: [224, 224, 3]
+    training:
+      batch_size: 32
+      epochs: 80
+      dropout_rate: 0.4
+      use_cutmix: true
+    optimizer:
+      name: "sgd"
+      learning_rate: 0.001
+      momentum: 0.9
+      nesterov: true
+      initial_lr: 0.0001
+      alpha: 0.001
+    dataset:
+      classes: 10
+      train_ratio: 0.9
+      val_ratio: 0.1
+      test_ratio: 0.0
+
+  # ---------------------------------------------------------------------------
   # Comparação com SOTA: Oxford-IIIT Pet Dataset (37 classes, split oficial)
   # ---------------------------------------------------------------------------
   oxford_pet_baseline:
