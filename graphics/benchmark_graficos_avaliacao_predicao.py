@@ -14,6 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import seaborn as sns
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
@@ -27,25 +28,26 @@ PREDICTIONS_CSV = INPUT_DIR / "output_dataframe.csv"
 INFERENCE_CSV = INPUT_DIR / "dataset.csv"
 CLASSES_JSON = INPUT_DIR / "classes.json"
 
-# Mapeamento legível dos modelos
+# Mapeamento legível dos modelos (Padrão conciso: pré-treino ImageNet vs. pré-treino de domínio IP102 vs. From Scratch)
 MODEL_NAME_MAPPING = {
+    'efficientnetv2b0_best': 'EfficientNetV2-B0 (IP102)',
+    'efficientnetv2b0_trained': 'EfficientNetV2-B0 (ImageNet)',
+    'efficientnetv2b1_ip102_finetuned': 'EfficientNetV2-B1 (IP102)',
     'efficientnetv2b1_trained': 'EfficientNetV2-B1 (ImageNet)',
-    'efficientnetv2b1_ip102_finetuned': 'EfficientNetV2-B1 (IP102 + Fine-Tuning)',
-    'efficientnetv2b0_best': 'EfficientNetV2-B0 (IP102 + Fine-Tuning)',
+    'mobilenetv3large_best': 'MobileNetV3-Large (IP102)',
     'mobilenetv3large_trained': 'MobileNetV3-Large (ImageNet)',
-    'mobilenetv3large_best': 'MobileNetV3-Large (IP102 + Fine-Tuning)',
+    'mobilenetv3small_best': 'MobileNetV3-Small (IP102)',
     'mobilenetv3small_trained': 'MobileNetV3-Small (ImageNet)',
-    'mobilenetv3small_best': 'MobileNetV3-Small (IP102 + Fine-Tuning)',
     'mobilevit_custom': 'MobileViT (From Scratch)'
 }
 
-# Mapeamento legível dos datasets
+# Mapeamento legível dos datasets (Nomenclatura Elsevier)
 DATASET_NAME_MAPPING = {
-    'datasetpests': 'DatasetPests (Validação)',
-    'insect12c': 'INSECT12C (Teste Robustez)'
+    'datasetpests': 'DatasetPests',
+    'insect12c': 'INSECT12C'
 }
 
-# Mapeamento das 10 classes de pragas de soja
+# Mapeamento das 10 classes de pragas de soja (Texto plano para CSV)
 DEFAULT_CLASS_LABELS = {
     0: "A. gemmatalis",
     1: "Coccinellidae",
@@ -59,13 +61,32 @@ DEFAULT_CLASS_LABELS = {
     9: "S. albula"
 }
 
-def load_class_labels():
+# Nomenclatura taxonômica em itálico para gráficos científicos (gênero/espécie em itálico)
+CLASS_PLOT_LABELS = {
+    "A. gemmatalis": r"$\it{A.\ gemmatalis}$",
+    "Coccinellidae": "Coccinellidae",
+    "D. speciosa": r"$\it{D.\ speciosa}$",
+    "E. meditabunda": r"$\it{E.\ meditabunda}$",
+    "E. heros": r"$\it{E.\ heros}$",
+    "Gastropoda": "Gastropoda",
+    "L. villosa": r"$\it{L.\ villosa}$",
+    "N. viridula": r"$\it{N.\ viridula}$",
+    "R. schistocercoides": r"$\it{R.\ schistocercoides}$",
+    "S. albula": r"$\it{S.\ albula}$"
+}
+
+def load_class_labels(for_plot=False):
     """Carrega os nomes das classes se o arquivo classes.json existir."""
     if CLASSES_JSON.exists():
         with open(CLASSES_JSON, "r", encoding="utf-8") as f:
             classes = json.load(f)
-            return {i: DEFAULT_CLASS_LABELS.get(i, name) for i, name in enumerate(classes)}
-    return DEFAULT_CLASS_LABELS
+            base_map = {i: DEFAULT_CLASS_LABELS.get(i, name) for i, name in enumerate(classes)}
+    else:
+        base_map = DEFAULT_CLASS_LABELS
+
+    if for_plot:
+        return {k: CLASS_PLOT_LABELS.get(v, v) for k, v in base_map.items()}
+    return base_map
 
 def find_pareto_optimal(df, objectives_to_maximize, objectives_to_minimize):
     """Identifica os pontos Pareto-ótimos em um DataFrame."""
@@ -158,8 +179,8 @@ def compute_performance_metrics(df_pred, df_inf):
     # Guardar acurácia numérica antes da formatação
     perf_df['numeric_accuracy'] = perf_df['accuracy']
 
-    # Formatar acurácia com desvio padrão
-    perf_df['accuracy_formatted'] = perf_df['accuracy'].apply(lambda x: f"{x:.4f}") + ' ' + perf_df['std_deviation'].apply(lambda x: f"(±{x:.2f})")
+    # Formatar acurácia com desvio padrão (3 decimais para acurácia conforme Tabela 3 do artigo)
+    perf_df['accuracy_formatted'] = perf_df['accuracy'].apply(lambda x: f"{x:.3f}") + ' ' + perf_df['std_deviation'].apply(lambda x: f"(±{x:.2f})")
 
     # 5. Mesclar tempos de inferência
     if df_inf is not None and not df_inf.empty:
@@ -208,9 +229,9 @@ def plot_pareto_frontier(perf_df):
     print("📈 Gerando gráficos de Fronteira de Pareto (Acurácia vs. Tempo de Inferência)...")
     
     device_plot_info = {
-        'time_high_end': {'title': 'Fast-end (GPU)', 'pareto_flag': 'is_pareto_high_end'},
-        'time_mid_end': {'title': 'Mid-end (CPU/Edge)', 'pareto_flag': 'is_pareto_mid_end'},
-        'time_low_end': {'title': 'Slow-end (Mobile/IoT)', 'pareto_flag': 'is_pareto_low_end'}
+        'time_high_end': {'title': 'Inference time (High-end)', 'pareto_flag': 'is_pareto_high_end'},
+        'time_mid_end': {'title': 'Inference time (Mid-end)', 'pareto_flag': 'is_pareto_mid_end'},
+        'time_low_end': {'title': 'Inference time (Low-end)', 'pareto_flag': 'is_pareto_low_end'}
     }
 
     unique_models = perf_df['modelo'].unique()
@@ -235,7 +256,7 @@ def plot_pareto_frontier(perf_df):
         df_sub = perf_df[perf_df['dataset'] == d_name].copy()
         d_display_name = DATASET_NAME_MAPPING.get(d_name, d_name.capitalize())
 
-        f_label = f'Fronteira de Pareto ({d_display_name})'
+        f_label = f'Pareto Frontier ({d_display_name})'
         legend_elements[f_label] = plt.Line2D([0], [0], color=pareto_colors[row_idx % len(pareto_colors)], linestyle='--', linewidth=2.5)
 
         min_acc = df_sub['numeric_accuracy'].min()
@@ -274,16 +295,33 @@ def plot_pareto_frontier(perf_df):
                     legend=False
                 )
 
-            ax.set_title(f'{d_display_name}\nAcurácia vs. {info["title"]}', fontsize=15, fontweight='bold')
-            ax.set_xlabel(f'{info["title"]} (ms)', fontsize=14)
+            ax.set_title(f'{d_display_name} - Accuracy vs. {info["title"]}', fontsize=16)
+            ax.set_xlabel(f'{info["title"]} (ms)', fontsize=15)
             if col_idx == 0:
-                ax.set_ylabel('Acurácia Global', fontsize=14)
+                ax.set_ylabel('Accuracy (%)', fontsize=15)
             else:
                 ax.set_ylabel('')
 
             ax.tick_params(axis='both', labelsize=13)
             ax.set_ylim(y_lim)
             ax.set_xscale('log')
+
+            # Formatação adaptativa do eixo X:
+            # Se span < 5, usa valores escalares limpos para evitar sobreposição
+            # Se span >= 5 (múltiplas décadas), usa potências de 10 como no artigo original
+            t_vals = df_sub[col_time].dropna()
+            if not t_vals.empty:
+                t_min, t_max = t_vals.min(), t_vals.max()
+                span_ratio = t_max / max(1e-5, t_min)
+                if span_ratio < 5:
+                    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+                    ax.xaxis.set_minor_formatter(ticker.NullFormatter())
+                    ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=4, steps=[1, 2, 5, 10]))
+                else:
+                    ax.xaxis.set_major_locator(ticker.LogLocator(base=10.0))
+                    ax.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs='auto'))
+                    ax.xaxis.set_major_formatter(ticker.LogFormatterMathtext())
+
             ax.grid(True, which="both", ls="--", alpha=0.6)
 
     handles = list(legend_elements.values())
@@ -305,7 +343,7 @@ def plot_pareto_frontier(perf_df):
         d_display_name = DATASET_NAME_MAPPING.get(d_name, d_name.capitalize())
 
         fig, axes = plt.subplots(1, 3, figsize=(19, 6), sharey=False)
-        fig.suptitle(f'Acurácia vs. Tempo de Inferência - {d_display_name}', fontsize=18, fontweight='bold', y=1.03)
+        fig.suptitle(f'{d_display_name} - Accuracy vs. Inference time', fontsize=18, fontweight='bold', y=1.03)
 
         min_acc = df_sub['numeric_accuracy'].min()
         max_acc = df_sub['numeric_accuracy'].max()
@@ -342,16 +380,31 @@ def plot_pareto_frontier(perf_df):
                     legend=False
                 )
 
-            ax.set_title(f'{info["title"]}', fontsize=15)
-            ax.set_xlabel(f'{info["title"]} (ms)', fontsize=14)
+            ax.set_title(f'{info["title"]}', fontsize=16)
+            ax.set_xlabel(f'{info["title"]} (ms)', fontsize=15)
             if col_idx == 0:
-                ax.set_ylabel('Acurácia Global', fontsize=14)
+                ax.set_ylabel('Accuracy (%)', fontsize=15)
             else:
                 ax.set_ylabel('')
 
             ax.tick_params(axis='both', labelsize=13)
             ax.set_ylim(y_lim)
             ax.set_xscale('log')
+
+            # Formatação adaptativa do eixo X
+            t_vals = df_sub[col_time].dropna()
+            if not t_vals.empty:
+                t_min, t_max = t_vals.min(), t_vals.max()
+                span_ratio = t_max / max(1e-5, t_min)
+                if span_ratio < 5:
+                    ax.xaxis.set_major_formatter(ticker.ScalarFormatter())
+                    ax.xaxis.set_minor_formatter(ticker.NullFormatter())
+                    ax.xaxis.set_major_locator(ticker.MaxNLocator(nbins=4, steps=[1, 2, 5, 10]))
+                else:
+                    ax.xaxis.set_major_locator(ticker.LogLocator(base=10.0))
+                    ax.xaxis.set_minor_locator(ticker.LogLocator(base=10.0, subs='auto'))
+                    ax.xaxis.set_major_formatter(ticker.LogFormatterMathtext())
+
             ax.grid(True, which="both", ls="--", alpha=0.6)
 
         fig.legend(handles[:len(unique_models)] + [handles[-1]], labels[:len(unique_models)] + [labels[-1]],
@@ -381,15 +434,17 @@ def plot_resolution_impact_analysis(df_pred):
         return
 
     scenarios = {
-        'Todas (Sem filtro)': df_insect,
-        'Médias (> 60×60 px)': df_insect[(df_insect['orig_width'] > 60) & (df_insect['orig_height'] > 60)],
-        'Grandes (> 100×100 px)': df_insect[(df_insect['orig_width'] > 100) & (df_insect['orig_height'] > 100)]
+        'All (No filter)': df_insect,
+        'Medium (> 60×60 px)': df_insect[(df_insect['orig_width'] > 60) & (df_insect['orig_height'] > 60)],
+        'Large (> 100×100 px)': df_insect[(df_insect['orig_width'] > 100) & (df_insect['orig_height'] > 100)]
     }
 
     records = []
-    class_labels_map = load_class_labels()
+    class_labels_map = load_class_labels(for_plot=False)
+    class_plot_labels_map = load_class_labels(for_plot=True)
     unique_classes = sorted(df_insect['y_true_idx'].unique())
-    class_display_names = [class_labels_map.get(c, f"Classe {c}") for c in unique_classes]
+    class_display_names = [class_labels_map.get(c, f"Class {c}") for c in unique_classes]
+    class_plot_names = [class_plot_labels_map.get(c, f"Class {c}") for c in unique_classes]
 
     for sc_name, sc_df in scenarios.items():
         n_samples = len(sc_df['modelo'].unique()) and int(len(sc_df) / len(sc_df['modelo'].unique()))
@@ -400,11 +455,11 @@ def plot_resolution_impact_analysis(df_pred):
             f1_weighted = f1_score(m_sub['y_true_idx'], m_sub['y_pred_idx'], average='weighted', zero_division=0)
             
             records.append({
-                'Cenário de Resolução': sc_name,
-                'Amostras': n_samples,
-                'Modelo': MODEL_NAME_MAPPING.get(m, m),
+                'Resolution Scenario': sc_name,
+                'Samples': n_samples,
+                'Model': MODEL_NAME_MAPPING.get(m, m),
                 'modelo_id': m,
-                'Acurácia': acc,
+                'Accuracy': acc,
                 'Macro F1': f1_macro,
                 'Weighted F1': f1_weighted
             })
@@ -415,35 +470,36 @@ def plot_resolution_impact_analysis(df_pred):
     print(f"✅ Salvo resumo de resolução em: {res_csv}")
 
     # 1. Gráfico de Barras Agrupadas: Acurácia vs. Faixa de Resolução
-    plt.figure(figsize=(14, 7))
+    plt.figure(figsize=(16, 7.5))
     sns.set_style("whitegrid")
     
-    palette = sns.color_palette("Set2", n_colors=len(res_df['Modelo'].unique()))
+    palette = sns.color_palette("tab10", n_colors=len(res_df['Model'].unique()))
     ax = sns.barplot(
         data=res_df,
-        x='Cenário de Resolução',
-        y='Acurácia',
-        hue='Modelo',
+        x='Resolution Scenario',
+        y='Accuracy',
+        hue='Model',
         palette=palette,
         edgecolor='black',
         linewidth=1.2
     )
 
-    # Anotações de porcentagem no topo das barras
+    # Anotações de porcentagem no topo das barras (rotação 90° para evitar colisões entre modelos com acurácias próximas)
     for p in ax.patches:
         height = p.get_height()
         if height > 0:
             ax.annotate(f"{height*100:.1f}%",
                         (p.get_x() + p.get_width() / 2., height),
                         ha='center', va='bottom',
-                        fontsize=12, fontweight='bold',
+                        fontsize=11, fontweight='bold',
+                        rotation=90,
                         xytext=(0, 4), textcoords='offset points')
 
-    plt.title("Impacto da Resolução na Robustez Zero-Shot (INSECT12C)", fontsize=18, fontweight='bold', pad=15)
-    plt.xlabel("Faixas de Resolução dos Recortes", fontsize=15, fontweight='bold', labelpad=10)
-    plt.ylabel("Acurácia Global", fontsize=15, fontweight='bold', labelpad=10)
-    plt.ylim(0.40, 1.0)
-    plt.legend(title="Modelos", fontsize=13, title_fontsize=14, loc='upper left', frameon=True, shadow=True)
+    plt.title("Impact of Resolution on Zero-Shot Robustness (INSECT12C)", fontsize=18, fontweight='bold', pad=15)
+    plt.xlabel("Crop Resolution Ranges", fontsize=15, fontweight='bold', labelpad=10)
+    plt.ylabel("Overall Accuracy", fontsize=15, fontweight='bold', labelpad=10)
+    plt.ylim(0.0, 1.05)
+    plt.legend(title="Models", fontsize=11, title_fontsize=12, bbox_to_anchor=(1.01, 1), loc='upper left', frameon=True, shadow=True)
     plt.tight_layout()
 
     bar_pdf = OUTPUT_DIR / "resolution_impact_insect12c.pdf"
@@ -455,9 +511,9 @@ def plot_resolution_impact_analysis(df_pred):
 
     # 2. Gerar Heatmaps para cada cenário de resolução
     scenario_files = {
-        'Todas (Sem filtro)': 'all',
-        'Médias (> 60×60 px)': 'gt60',
-        'Grandes (> 100×100 px)': 'gt100'
+        'All (No filter)': 'all',
+        'Medium (> 60×60 px)': 'gt60',
+        'Large (> 100×100 px)': 'gt100'
     }
 
     for sc_name, file_suffix in scenario_files.items():
@@ -484,9 +540,9 @@ def plot_resolution_impact_analysis(df_pred):
         vmin, vmax = 0.2, 1.0
 
         im = ax.imshow(heatmap_data, cmap=cmap, origin='lower', aspect='auto', vmin=vmin, vmax=vmax)
-        ax.set_xticks(np.arange(len(class_display_names)))
+        ax.set_xticks(np.arange(len(class_plot_names)))
         ax.set_yticks(np.arange(len(f1_df.index)))
-        ax.set_xticklabels(class_display_names, rotation=35, ha='right', fontsize=14, fontweight='bold')
+        ax.set_xticklabels(class_plot_names, rotation=35, ha='right', fontsize=14, fontweight='bold')
         ax.set_yticklabels(f1_df.index, fontsize=14, fontweight='bold')
 
         for i in range(heatmap_data.shape[0]):
@@ -495,9 +551,9 @@ def plot_resolution_impact_analysis(df_pred):
                 text_color = "black" if val > 0.65 else "white"
                 ax.text(j, i, f"{val:.3f}", ha="center", va="center", color=text_color, fontsize=12, fontweight='bold')
 
-        ax.set_xlabel('Classes de Pragas de Soja', fontsize=16, fontweight='bold', labelpad=12)
-        ax.set_ylabel('Modelos Avaliados', fontsize=16, fontweight='bold', labelpad=12)
-        ax.set_title(f'F1-Score por Classe - INSECT12C [{sc_name}]', fontsize=18, fontweight='bold', pad=15)
+        ax.set_xlabel('Classes', fontsize=16, fontweight='bold', labelpad=12)
+        ax.set_ylabel('Models', fontsize=16, fontweight='bold', labelpad=12)
+        ax.set_title(f'F1-Score per Class - INSECT12C [{sc_name}]', fontsize=18, fontweight='bold', pad=15)
 
         cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
         cbar.set_label('F1-Score', fontsize=15, fontweight='bold')
@@ -514,9 +570,11 @@ def plot_resolution_impact_analysis(df_pred):
 def plot_f1_heatmaps(df_pred):
     """Gera Matrizes de Calor (Heatmaps) de F1-Score por classe para cada dataset."""
     print("\n🔥 Gerando Heatmaps de F1-Score por classe...")
-    class_labels_map = load_class_labels()
+    class_labels_map = load_class_labels(for_plot=False)
+    class_plot_labels_map = load_class_labels(for_plot=True)
     unique_classes = sorted(df_pred['y_true_idx'].unique())
-    class_display_names = [class_labels_map.get(c, f"Classe {c}") for c in unique_classes]
+    class_display_names = [class_labels_map.get(c, f"Class {c}") for c in unique_classes]
+    class_plot_names = [class_plot_labels_map.get(c, f"Class {c}") for c in unique_classes]
 
     datasets = df_pred['dataset'].unique()
 
@@ -550,9 +608,9 @@ def plot_f1_heatmaps(df_pred):
         
         im = ax.imshow(heatmap_data, cmap=cmap, origin='lower', aspect='auto', vmin=vmin, vmax=vmax)
 
-        ax.set_xticks(np.arange(len(class_display_names)))
+        ax.set_xticks(np.arange(len(class_plot_names)))
         ax.set_yticks(np.arange(len(f1_df.index)))
-        ax.set_xticklabels(class_display_names, rotation=35, ha='right', fontsize=14, fontweight='bold')
+        ax.set_xticklabels(class_plot_names, rotation=35, ha='right', fontsize=14, fontweight='bold')
         ax.set_yticklabels(f1_df.index, fontsize=14, fontweight='bold')
 
         for i in range(heatmap_data.shape[0]):
@@ -561,9 +619,9 @@ def plot_f1_heatmaps(df_pred):
                 text_color = "black" if val > (vmin + vmax) / 2 else "white"
                 ax.text(j, i, f"{val:.3f}", ha="center", va="center", color=text_color, fontsize=12, fontweight='bold')
 
-        ax.set_xlabel('Classes de Pragas de Soja', fontsize=16, fontweight='bold', labelpad=12)
-        ax.set_ylabel('Modelos Avaliados', fontsize=16, fontweight='bold', labelpad=12)
-        ax.set_title(f'F1-Score por Classe - {d_display_name}', fontsize=18, fontweight='bold', pad=15)
+        ax.set_xlabel('Classes', fontsize=16, fontweight='bold', labelpad=12)
+        ax.set_ylabel('Models', fontsize=16, fontweight='bold', labelpad=12)
+        ax.set_title(f'F1-Score per Class for {d_display_name} Dataset', fontsize=18, fontweight='bold', pad=15)
 
         cbar = fig.colorbar(im, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
         cbar.set_label('F1-Score', fontsize=15, fontweight='bold')
