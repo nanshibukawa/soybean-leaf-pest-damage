@@ -48,7 +48,7 @@ MODELS_CONFIG = {
     "efficientnetv2b1_ip102_finetuned": {
         "file": MODELS_DIR / "mobile/EfficientNetV2B1_keras_tuner_best.keras",
         "target_size": (240, 240),
-        "display_name": "EfficientNetV2-B1 (IP102 + Fine-Tuning)"
+        "display_name": "EfficientNetV2-B1 (IP102)"
     },
     "mobilenetv3large_trained": {
         "file": MODELS_DIR / "mobilenetv3large_trained.keras",
@@ -58,7 +58,7 @@ MODELS_CONFIG = {
     "mobilenetv3large_best": {
         "file": MODELS_DIR / "mobile/MobileNetV3Large_keras_tuner_best.keras",
         "target_size": (224, 224),
-        "display_name": "MobileNetV3-Large (IP102 + Fine-Tuning)"
+        "display_name": "MobileNetV3-Large (IP102)"
     },
     "mobilenetv3small_trained": {
         "file": MODELS_DIR / "mobilenetv3small_trained.keras",
@@ -68,12 +68,17 @@ MODELS_CONFIG = {
     "mobilenetv3small_best": {
         "file": MODELS_DIR / "mobile/MobileNetV3Small_keras_tuner_best.keras",
         "target_size": (224, 224),
-        "display_name": "MobileNetV3-Small (IP102 + Fine-Tuning)"
+        "display_name": "MobileNetV3-Small (IP102)"
+    },
+    "efficientnetv2b0_trained": {
+        "file": MODELS_DIR / "efficientnetv2b0_trained.keras",
+        "target_size": (224, 224),
+        "display_name": "EfficientNetV2-B0 (ImageNet)"
     },
     "efficientnetv2b0_best": {
         "file": MODELS_DIR / "mobile/EfficientNetV2B0_keras_tuner_best.keras",
         "target_size": (224, 224),
-        "display_name": "EfficientNetV2-B0 (IP102 + Fine-Tuning)"
+        "display_name": "EfficientNetV2-B0 (IP102)"
     },
     "mobilevit_custom": {
         "file": MODELS_DIR / "mobile/mobilevit-custom_keras_tuner_best.keras",
