@@ -49,6 +49,20 @@ class DataIngestionPipeline:
             )
             extract_zip(insect_zip_path, self.config.insect12c_unzip_dir)
             
+            # 5. Baixa e extrai Dataset Final + IP102 Cropped (Google Drive)
+            final_pests_dir = self.config.data_final_dir / "final" / "DatasetPests-split"
+            ip102_cropped_dir = self.config.data_final_dir / "ip102_cropped"
+            
+            if not final_pests_dir.exists() or not ip102_cropped_dir.exists():
+                logger.info("📦 Ingestão: Baixando Dataset Final e IP102 Cropped (Google Drive)...")
+                final_zip_path = download_file(
+                    self.config.data_final_url,
+                    self.config.data_final_zip
+                )
+                extract_zip(final_zip_path, self.config.data_final_dir)
+            else:
+                logger.info("✅ Dataset Final e IP102 Cropped já presentes.")
+            
             logger.info(f"✅ Todos os dados baixados e extraídos com sucesso!")
             return data_path
             

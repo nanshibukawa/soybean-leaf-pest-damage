@@ -29,6 +29,11 @@ INSECT12C_URL = "https://github.com/EvertonTetila/INSECT12C-Dataset/archive/refs
 INSECT12C_ZIP = DATA_INGESTION_DIR / "insect12c.zip"
 INSECT12C_EXTRACT_DIR = DATA_INGESTION_DIR
 
+# Dataset Final + IP102 Cropped (Google Drive - Pronto para treino)
+DATA_FINAL_URL = "https://drive.google.com/file/d/1Af5dJrsr8ovDDkhBszBge2LzQcxm1895/view?usp=sharing"
+DATA_FINAL_ZIP = LOCAL_DATA_DIR / "data_final.zip"
+DATA_FINAL_DIR = LOCAL_DATA_DIR
+
 
 # =============================================================================
 # DATA SPLIT

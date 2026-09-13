@@ -28,6 +28,11 @@ class DataIngestionConfig:
     insect12c_zip: Path = field(default=constants.INSECT12C_ZIP)
     insect12c_unzip_dir: Path = field(default=constants.INSECT12C_EXTRACT_DIR)
 
+    # Dataset Final + IP102 Cropped
+    data_final_url: str = field(default=constants.DATA_FINAL_URL)
+    data_final_zip: Path = field(default=constants.DATA_FINAL_ZIP)
+    data_final_dir: Path = field(default=constants.DATA_FINAL_DIR)
+
 
 class ImageConfig(BaseModel):
     altura: int = Field(..., description="Altura da imagem")
