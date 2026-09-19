@@ -43,10 +43,12 @@
 ### 2.3. Decisões de Pré-Processamento
 * **Recorte Anatômico com Margem Foliar (`--margin 0.20`):** Caixas delimitadoras muito justas (*tight crops*) deformavam o inseto ao serem interpoladas para $224\times224$ ou $240\times240$. A expansão de 20% preservou a morfologia do inseto e incluiu o contexto foliar imediato (tipo de perfuração/dano).
 * **Auto-Crop via YOLOv8:** Treinou-se um detector `YOLOv8n` de classe única (`pest`) nas anotações manuais do DatasetPests para localizar e recortar autonomamente as pragas das imagens brutas mineradas via API do iNaturalist (`auto_crop_inaturalist.py`).
-* **Group-based Stratified Split (Sem *Data Leakage*):**
-  - **Divisão Real:** **90% Treino e 10% Validação** (`TRAIN_RATIO = 0.9`, `VALIDATION_RATIO = 0.1`, semente fixa `seed=42`).
-  - **Critério de Agrupamento:** Todas as caixas delimitadoras recortadas da mesma imagem-mãe (folha original) foram forçadas a pertencer integralmente ou ao treino ou à validação (`split_dataset_by_group.py`). Isso impediu que o modelo memorizasse o fundo da folha.
-  - **Conjunto de Teste:** O teste intra-domínio oficial do benchmark é a partição de validação isolada (1.123 amostras), e o teste inter-domínio de generalização externa zero-shot é a base independente INSECT12C (2.618 amostras).
+* **Estratégia de Particionamento e Dupla Avaliação (Sem *Data Leakage*):**
+  - **Divisão do DatasetPests (90/10):** Particionado em **90% Treino** (10.345 amostras) e **10% Validação** (1.123 amostras), com semente fixa `seed=42`.
+  - **Garantia Anti-Vazamento (Agrupamento por Imagem-Mãe):** Todas as caixas delimitadoras recortadas da mesma folha original foram forçadas a pertencer integralmente ou ao treino ou à validação (`split_dataset_by_group.py`), impedindo que a rede memorize a textura do fundo da folha.
+  - **As Duas Réguas de Avaliação do Projeto:**
+    1. **Avaliação Interna / Intra-Domínio (`val/` — 1.123 fotos):** Utilizada durante a busca de hiperparâmetros (Keras Tuner) e Early Stopping para comprovar que os modelos convergem e aprendem a discriminar as 10 classes na mesma distribuição de captura.
+    2. **Avaliação Externa de Teste / Inter-Domínio (`INSECT12C` — 2.618 fotos):** Base externa totalmente independente (outro autor, outras fazendas e iluminações), avaliada estritamente em regime cego (*zero-shot*, sem qualquer ajuste fino), para comprovar a robustez e generalização prática do modelo em condições reais de campo.
 
 ---
 
