@@ -85,10 +85,12 @@ pip install .[image-processing]
 │   ├── analysis/               # Grad-CAM e explicabilidade
 │   ├── main.py                 # Pipeline principal do classificador
 │   └── main_tuning.py          # Busca de hiperparâmetros (Keras Tuner)
-├── docs/                       # Relatórios e documentação técnica do mestrado
-│   ├── relatorios_experimentos/# Análises de loss, pré-treino IP102, etc.
-│   ├── preparacao_dados/       # Pipeline de Pré-Processamento (pipeline_preprocessamento.md)
-│   └── pesquisa_e_entrevistas/ # Anotações de pesquisa e roteiros
+├── docs/                       # Relatórios e documentação técnica do mestrado (organizados cronologicamente)
+│   ├── 01_ROTEIRO_TECNICO_E_METODOLOGICO.md # Fonte única da verdade técnica
+│   ├── 02_METODOLOGIA_E_DECISOES.md         # Rigor científico e controle experimental
+│   ├── 03_preparacao_dados/                 # Pipeline, limpeza iNaturalist e recortes
+│   ├── 04_experimentos_e_benchmark/         # Focal loss, pré-treino IP102 e benchmark
+│   └── 05_pesquisa_e_modulo_rag/            # Pesquisa de campo e sistema RAG com Qdrant
 ├── artifacts/                  # Artefatos do projeto
 │   ├── data/                   # Datasets organizados (raw, processed, final, yolo)
 │   ├── data_ingestion/         # Ingestão bruta de dados

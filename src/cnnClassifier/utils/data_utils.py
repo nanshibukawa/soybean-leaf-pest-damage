@@ -35,36 +35,29 @@ def download_file(url: str, output_path: Path) -> Path:
 
 
 def download_from_gdrive(url: str, output_path: Path) -> Path:
-    """Baixa arquivo do Google Drive"""
-    if output_path.exists():
-        non_zip_items = [
-            item for item in output_path.parent.iterdir() if item.name.endswith(".zip")
-        ]
-
-        if non_zip_items:
-            logger.debug(f"Arquivo já existe: {output_path.name})")
-            return output_path
+    """Baixa arquivo do Google Drive usando gdown"""
+    if output_path.exists() and output_path.stat().st_size > 0:
+        logger.info(f"Arquivo já existe: {output_path.name}")
+        return output_path
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    logger.info(f"Baixando do Google Drive: {url}")
 
-    logger.info(f"Baixando: {url}")
+    file_id = None
+    if "/file/d/" in url:
+        file_id = url.split("/file/d/")[1].split("/")[0]
+    elif "id=" in url:
+        file_id = url.split("id=")[1].split("&")[0]
 
     try:
-        # Método 1: URL direta com fuzzy matching
-        gdown.download(url, str(output_path), quiet=False, fuzzy=True)
-    except Exception as e1:
-        logger.warning(f"Método 1 falhou: {e1}")
-        try:
-            # Método 2: Extrai ID e tenta novamente
-            if "/file/d/" in url:
-                file_id = url.split("/file/d/")[1].split("/")[0]
-                logger.info(f"Tentando com ID extraído: {file_id}")
-                gdown.download(id=file_id, output=str(output_path), quiet=False)
-            else:
-                raise e1
-        except Exception as e2:
-            logger.error(f"Ambos os métodos falharam: {e2}")
-            raise e2
+        if file_id:
+            logger.info(f"Baixando diretamente via Google Drive ID: {file_id}")
+            gdown.download(id=file_id, output=str(output_path), quiet=False)
+        else:
+            gdown.download(url=url, output=str(output_path), quiet=False)
+    except Exception as e:
+        logger.error(f"Falha ao baixar do Google Drive ({url}): {e}")
+        raise e
 
     logger.info("✅ Download completo!")
     return output_path
