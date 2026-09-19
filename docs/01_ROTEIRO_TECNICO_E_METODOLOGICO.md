@@ -2,21 +2,19 @@
 ## Sistema de Classificação de Pragas da Soja & Borda
 
 > **Propósito deste documento:**  
-> Centralizar todas as decisões de engenharia, parâmetros experimentais, fluxo de dados e justificativas científicas do projeto de mestrado. Serve como **fonte única da verdade** para:
-> 1. **Orientador e Artigos Científicos:** Fornecer dados exatos e resumíveis para o *Application Note* (*Computers and Electronics in Agriculture*) e artigos futuros.
-> 2. **Dissertação de Mestrado:** Estruturar os Capítulos de *Materiais e Métodos*, *Resultados e Discussão*, e *Implantação em Dispositivos Móveis (Edge Computing)*.
+> Centralizar a especificação técnica, os parâmetros experimentais, o pipeline de dados e os resultados consolidados do sistema de classificação de pragas agrícolas em dispositivos de borda. Serve como **guia oficial de arquitetura e reprodutibilidade científica** do projeto.
 
 ---
 
-## 📌 1. Quadro Comparativo: O que vai para o Artigo vs. Dissertação
+## 📌 1. Escopo Técnico da Pesquisa: Borda vs. Pipeline Experimental Completo
 
-| Dimensão Metodológica | No Artigo (*Application Note* - Elsevier) | Na Dissertação de Mestrado |
+| Dimensão Técnica | Módulo de Aplicação em Borda (Mobile Edge) | Pipeline de Pesquisa e Benchmarking Completo |
 | :--- | :--- | :--- |
-| **Foco Central** | Aplicação móvel offline e validação do melhor modelo leve em borda. | Pesquisa completa: esteira de dados, benchmark de 10 arquiteturas, ablações e engenharia de borda. |
-| **Extensão** | Ultraconciso: limite de 4 páginas impressas (~8 páginas de manuscrito). | Completa: sem limite restrito, aprofundando teoria e implementação. |
-| **Pipeline de Dados** | Resumo do DatasetPests (10 classes), margem foliar e teste zero-shot no INSECT12C. | Detalhamento da mineração no iNaturalist com YOLOv8, filtros de fase larval e eliminação de *data leakage*. |
-| **Técnicas de Treino** | Menção a Keras Tuner Bayesiano (30 trials), Focal Loss e TFLite FP16. | Fórmulas matemáticas da Focal Loss vs. Cross-Entropy, espaços de busca do Tuner e hiperparâmetros ótimos. |
-| **Latência em Borda** | Gráfico de Pareto consolidado e faixas de profiling de hardware. | Análise aprofundada de compressão de pesos, limites do runtime TFLite e viabilidade em campo. |
+| **Foco Central** | Aplicação móvel offline (PestClassifier) e inferência em tempo real com o modelo ótimo global. | Avaliação empírica: mineração de dados, benchmark de 11 configurações (9 leves + 2 referência), ablações e profiling multi-tier. |
+| **Arquitetura Alvo** | EfficientNetV2-B1 otimizada e quantizada em TFLite FP16 (~16.5 MB). | Estudo comparativo sistemático entre MobileNetV3 (Small/Large), EfficientNetV2 (B0/B1), MobileViT e ConvNeXt-Tiny. |
+| **Estratégia de Domínio** | Pré-treinamento entomológico no IP102 seguido de fine-tuning especializado. | Confronto sistemático: ImageNet (baseline genérico) vs. IP102 (domínio entomológico) vs. Treinamento From Scratch. |
+| **Pipeline de Dados** | Captura local, pré-processamento anatômico com margem foliar de +20% e inferência sem nuvem. | Ingestão multi-fonte (DatasetPests, iNaturalist, IP102, INSECT12C) e particionamento agrupado por imagem-mãe (anti-leakage). |
+| **Métricas Críticas** | Latência de inferência (ms) e consumo de recursos por profiling tier. | Macro-F1, Precision, Recall, Acurácia estratificada por resolução espacial (>60px, >100px) e fronteira de Pareto multi-objetivo. |
 
 ---
 
@@ -48,7 +46,7 @@
 * **Group-based Stratified Split (Sem *Data Leakage*):**
   - **Divisão Real:** **90% Treino e 10% Validação** (`TRAIN_RATIO = 0.9`, `VALIDATION_RATIO = 0.1`, semente fixa `seed=42`).
   - **Critério de Agrupamento:** Todas as caixas delimitadoras recortadas da mesma imagem-mãe (folha original) foram forçadas a pertencer integralmente ou ao treino ou à validação (`split_dataset_by_group.py`). Isso impediu que o modelo memorizasse o fundo da folha.
-  - **Conjunto de Teste:** O teste intra-domínio oficial do benchmark é a partição de validação isolada, e o teste inter-domínio é a base externa INSECT12C. *(Nota: O rascunho do artigo mencionava 80/10/10 por engano).*
+  - **Conjunto de Teste:** O teste intra-domínio oficial do benchmark é a partição de validação isolada (1.123 amostras), e o teste inter-domínio de generalização externa zero-shot é a base independente INSECT12C (2.618 amostras).
 
 ---
 
@@ -77,7 +75,7 @@ O benchmark avaliou **9 configurações principais** (e ConvNeXt-Tiny como model
 
 > 📌 **Nota sobre Contagem de Parâmetros:** Os valores nominais referem-se à arquitetura padrão com cabeça de 1.000 classes do ImageNet. Ao substituir a cabeça padrão pelo bloco enxuto `TopKGlobalAveragePooling2D` + `Dense(10)`, os modelos finais implantados em disco tornam-se consideravelmente mais leves (ex.: MobileNetV3-Large cai de 5.4M para 3.1M; B1 cai de 8.1M para 7.1M), o que reforça ainda mais sua adequação para dispositivos móveis.
 >
-> ⚠️ **Atenção para o Artigo:** O texto do artigo citava erroneamente resolução de $224\times224$ para todos os modelos. O modelo vencedor implantado (**EfficientNetV2-B1**) opera nativamente a **$240 \times 240$**.
+> 📌 **Especificação de Resoluções:** O modelo implantado em produção (**EfficientNetV2-B1**) opera nativamente a **$240 \times 240$**, enquanto os backbones MobileNetV3, ConvNeXt e EfficientNetV2-B0 operam a $224 \times 224$, e o MobileViT a $256 \times 256$.
 
 ### 3.2. Status das Camadas e Blocos Customizados (Inspeção no Grafo Salvo)
 Para manter o modelo leve, enxuto e reprodutível, a arquitetura final adotada e salva em disco (`artifacts/models/mobile/`):
@@ -85,7 +83,7 @@ Para manter o modelo leve, enxuto e reprodutível, a arquitetura final adotada e
 * **`ResidualSRCNNBlock` (Super-Resolução):** **DESATIVADO** (`use_sr_block: False`).
 * **`Squeeze-and-Excitation` e `Compression Blocks` extras:** **DESATIVADOS** (`use_se_block: False`, `use_compression_blocks: False`).
 * **`TopKGlobalAveragePooling2D`:** **ATIVO**. É a única camada customizada que atua sobre o mapa de características do backbone, selecionando as $k\%$ ativações espaciais mais fortes da praga antes da cabeça densa.
-* **Vantagem Científica:** Isso simplifica consideravelmente a explicação da metodologia no artigo e na dissertação, mantendo as backbones limpas e de fácil reprodução por qualquer pesquisador.
+* **Reprodutibilidade:** Essa configuração enxuta assegura simplicidade de implantação, mantendo as backbones limpas e de fácil reprodução.
 
 ---
 
@@ -131,8 +129,7 @@ Para que a comparação ImageNet vs. IP102 fosse irrefutável perante revisores 
   - Compatibilidade com aceleradores neurais (GPU / NPU móveis).
 
 ### 5.2. Requisitos Técnicos de Execução Android
-* **Nível Mínimo de API:** **Android 5.0 (API nível 21)** ou recomendada **Android 7.0 (API nível 24)**.
-  *(Correção: O rascunho do artigo indicava API 14 / Android 4.0, o que é incompatível com o runtime do TensorFlow Lite moderno).*
+* **Nível Mínimo de API:** **Android 5.0 (API nível 21)** ou recomendada **Android 7.0 (API nível 24)** para total compatibilidade com o runtime C++/Java do TensorFlow Lite.
 
 ### 5.3. Latência e Categorias de Hardware (*Profiling Tiers*)
 As latências do benchmark consolidado (`scripts/generate_benchmark_data.py`) foram calculadas a partir de medição empírica direta e escalonamento por profiling:
@@ -140,7 +137,7 @@ As latências do benchmark consolidado (`scripts/generate_benchmark_data.py`) fo
 2. **Mid-End Tier (Profiling Scale $2.5\times$):** ~148 a 158 ms por inferência (equivalente a processadores intermediários Snapdragon 7-series / Dimensity).
 3. **Low-End Tier (Profiling Scale $6.5\times$):** ~386 a 410 ms por inferência (viável para SoCs de entrada e dispositivos legados no campo).
 
-> 📌 **Recomendação de Redação para o Artigo:** Apresentar essas categorias como *Profiling Hardware Tiers* baseados em medições de referência escaladas pela capacidade computacional de SoCs de borda, evitando afirmar que foram testados aparelhos físicos específicos em laboratório.
+> 📌 **Metodologia de Profiling:** As categorias de hardware representam *Profiling Hardware Tiers* obtidos a partir de medições de referência em hardware acelerado, escalonadas pelos fatores médios de capacidade computacional dos processadores de borda.
 
 ---
 
