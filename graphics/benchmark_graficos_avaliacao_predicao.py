@@ -38,7 +38,9 @@ MODEL_NAME_MAPPING = {
     'mobilenetv3large_trained': 'MobileNetV3-Large (ImageNet)',
     'mobilenetv3small_best': 'MobileNetV3-Small (IP102)',
     'mobilenetv3small_trained': 'MobileNetV3-Small (ImageNet)',
-    'mobilevit_custom': 'MobileViT (From Scratch)'
+    'mobilevit_custom': 'MobileViT (From Scratch)',
+    'convnexttiny_trained': 'ConvNeXt-Tiny (ImageNet)',
+    'convnexttiny_best': 'ConvNeXt-Tiny (IP102)'
 }
 
 # Mapeamento legível dos datasets (Nomenclatura Elsevier)
