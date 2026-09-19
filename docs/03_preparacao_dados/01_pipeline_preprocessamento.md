@@ -1,6 +1,6 @@
 # 🛠️ Documentação do Pipeline de Pré-Processamento de Dados
 
-Este documento descreve detalhadamente a arquitetura, as decisões metodológicas e o fluxo de dados da esteira de pré-processamento desenvolvida para a pesquisa de mestrado em **Detecção e Classificação de Danos por Pragas em Folhas de Soja**.
+Este documento descreve detalhadamente a arquitetura, as decisões metodológicas e o fluxo de dados da esteira de pré-processamento desenvolvida para a pesquisa científica em **Detecção e Classificação de Danos por Pragas em Folhas de Soja**.
 
 ---
 
@@ -52,7 +52,7 @@ flowchart TD
 
 ## 🧠 2. Fundamentação e Decisões Metodológicas
 
-Cada etapa do pipeline responde a um desafio prático identificado durante o desenvolvimento da pesquisa de mestrado:
+Cada etapa do pipeline responde a um desafio prático identificado durante o desenvolvimento da pesquisa científica:
 
 ### A. Expansão de Margem (+20%) vs. Distorção de Aspect Ratio
 * **Problema**: Recortes muito ajustados (*tight bounding boxes*) de pragas pequenas (ex: lagartas jovens ou ninfas), ao serem redimensionados diretamente para a resolução de entrada do modelo ($224 \times 224$ ou $240 \times 240$), sofriam deformações anatômicas severas e perda de textura foliar.

@@ -5,7 +5,7 @@
 > Este documento registra o primeiro estudo de ablação comparando IP102 vs. ImageNet utilizando hiperparâmetros fixos de SGD.
 > Na etapa posterior da pesquisa, realizou-se a **Otimização Bayesiana via Keras Tuner (30 trials)** para todas as 9 arquiteturas leves, elevando o desempenho final da EfficientNetV2-B1 para **94.30% de acurácia / 0.934 de Macro-F1 no DatasetPests** e **0.822 no INSECT12C (>100px)**, conforme consolidado oficialmente em [`docs/01_ROTEIRO_TECNICO_E_METODOLOGICO.md`](../../docs/01_ROTEIRO_TECNICO_E_METODOLOGICO.md).
 
-**Pesquisa de Mestrado:** Sistema de Detecção e Classificação de Danos por Pragas em Folhas de Soja  
+**Projeto de Pesquisa:** Sistema de Detecção e Classificação de Danos por Pragas em Folhas de Soja  
 **Autor:** Nan Shibukawa  
 **Data de Execução:** 26 de Julho de 2026  
 **Arquitetura Base:** EfficientNetV2B1  
@@ -98,7 +98,7 @@ Para fundamentar a qualidade dos pesos transferidos pelo extrator agrícola (`ip
 | **MobileNetV2** | Wu et al. (CVPR 2019) | 50,20% | ~77,50% |
 | **DenseNet-121** | Wu et al. (CVPR 2019) | 53,10% | ~81,20% |
 | **Vision Transformers / SOTA Recentes** | Artigos 2021-2023 | 57,50% - 61,20% | ~85,00% |
-| **Nosso Modelo (EfficientNetV2B1 + Focal Loss)** | **Sua Pesquisa de Mestrado** | **57,47%** | **86,00%** 🎯 |
+| **Nosso Modelo (EfficientNetV2B1 + Focal Loss)** | **Este Trabalho (Nosso Modelo)** | **57,47%** | **86,00%** 🎯 |
 
 > 📌 **Destaque:** O modelo pré-treinado superou os baselines clássicos do IP102 em **+4,37% a +8,07% em Top-1 Accuracy** e atingiu **86,00% de Top-5 Accuracy**, alinhando-se ao Estado da Arte recente e garantindo a altíssima qualidade dos filtros visuais transferidos para o fine-tuning da soja.
 
@@ -121,8 +121,8 @@ Isso valida a hipótese inicial da pesquisa: recortes de dimensão muito reduzid
 
 ---
 
-## 🏁 5. Conclusão para a Dissertação
+## 🏁 5. Conclusão da Investigação
 
 A hipótese principal da pesquisa é **plenamente aceita**: a transferência de aprendizado de domínio específica para pragas agrícolas (**IP102**) é estatisticamente superior à abordagem convencional baseada em ImageNet, promovendo ganhos de acurácia, F1-Score, velocidade de convergência e robustez out-of-distribution.
 
-**Recomendação para a arquitetura final:** Adotar definitivamente o extrator pré-treinado no IP102 (`ip102_pretrained_extractor.keras`) como o padrão para todos os experimentos subsequentes da dissertação.
+**Recomendação para a arquitetura final:** Adotar definitivamente o extrator pré-treinado no IP102 (`ip102_pretrained_extractor.keras`) como o padrão para todos os experimentos subsequentes da pesquisa.

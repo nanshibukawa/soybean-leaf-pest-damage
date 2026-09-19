@@ -1,7 +1,7 @@
-# 📚 Documentação Técnica e Científica do Mestrado
+# 📚 Documentação Técnica e Científica do Projeto
 ## Classificação de Pragas da Soja em Borda
 
-Este diretório reúne todos os relatórios, decisões de arquitetura, guias operacionais de dados e análises experimentais da pesquisa de mestrado.
+Este diretório reúne todos os relatórios, decisões de arquitetura, guias operacionais de dados e análises experimentais do projeto de pesquisa científica.
 
 ---
 
@@ -50,13 +50,15 @@ flowchart TD
     Estudo preliminar de ablação (rodada de Julho/2026 com SGD fixo) que comprovou o salto de acurácia conferido pelo pré-treino de domínio.
 11. [**`04_experimentos_e_benchmark/05_historico_refactoring_3classes.md`**](04_experimentos_e_benchmark/05_historico_refactoring_3classes.md):  
     *Documento histórico:* Memória técnica do planejamento de desacoplamento do extrator quando o projeto ainda abordava 3 classes preliminares.
+12. [**`04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
+    Diagnóstico qualitativo de ruído amostral (mariposas adultas e artefatos de detecção YOLO) na classe *Spodoptera albula* e seu impacto no gap de generalização com o teste zero-shot (*INSECT12C*). Base textual pronta para a discussão de erros do manuscrito científico.
 
 ---
 
 ### Fase 4: Pesquisa de Campo & Módulo RAG (Projeto Pessoal) ([`05_pesquisa_e_modulo_rag/`](05_pesquisa_e_modulo_rag/))
-12. [**`05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md`**](05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md):  
+13. [**`05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md`**](05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md):  
     Levantamento de aplicações e ferramentas concorrentes existentes para identificação de pragas no agronegócio.
-13. [**`05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md`**](05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md):  
+14. [**`05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md`**](05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md):  
     Roteiro de entrevistas com agrônomos, produtores e cooperativas para validação de usabilidade da solução em campo.
-14. [**`05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md`**](05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md):  
+15. [**`05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md`**](05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md):  
     Documentação técnica da prova de conceito da API de RAG: *Docling*, *Semantic Chunking* (HDBSCAN), representação híbrida (*Dense E5* + *Sparse BM25* + *ColBERT*), banco vetorial *Qdrant* e LLM *Llama 3.3*.

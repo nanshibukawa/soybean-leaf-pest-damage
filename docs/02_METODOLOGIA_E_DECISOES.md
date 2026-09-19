@@ -1,12 +1,12 @@
 # 📚 Metodologia, Decisões Experimentais e Controle de Hiperparâmetros
 
-Este documento centraliza todas as decisões metodológicas, critérios de rigor científico e o histórico de configurações dos experimentos da dissertação de mestrado em classificação de pragas de folhas de soja.
+Este documento centraliza todas as decisões metodológicas, critérios de rigor científico e o histórico de configurações dos experimentos da pesquisa científica em classificação de pragas de folhas de soja.
 
 ---
 
 ## 1. 🔬 Rigor Científico e Controle Experimental (*Ceteris Paribus*)
 
-Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 + Fine-Tuning)** sejam cientificamente válidas e incontestáveis pela banca examinadora, adota-se o princípio de controle estrito de variáveis.
+Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 + Fine-Tuning)** sejam cientificamente válidas e rigorosamente comparáveis, adota-se o princípio de controle estrito de variáveis.
 
 ### 1.1. O que é Mantido Estritamente Idêntico:
 * **Dados e Particionamento (*Splits*)**:
@@ -44,12 +44,12 @@ Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 
 
 ## 3. 🏷️ Padrão Oficial de Nomenclatura dos Modelos
 
-Para clareza em gráficos, tabelas e no texto da dissertação, adotou-se a seguinte nomenclatura padronizada:
+Para clareza em gráficos, tabelas e no texto do manuscrito, adotou-se a seguinte nomenclatura padronizada:
 
 | Estratégia | Nomenclatura nos Gráficos/Tabelas | Descrição Metodológica |
 | :--- | :--- | :--- |
 | **Baseline Tradicional** | `<Modelo> (ImageNet)` | Pesos pré-treinados no ImageNet ➔ Fine-tuning no DatasetPests. |
-| **Proposta da Dissertação** | `<Modelo> (IP102)` | ImageNet ➔ Pré-treino no IP102 (102 classes) ➔ Fine-tuning no DatasetPests. |
+| **Proposta da Pesquisa** | `<Modelo> (IP102)` | ImageNet ➔ Pré-treino no IP102 (102 classes) ➔ Fine-tuning no DatasetPests. |
 | **Sem Pré-Treino** | `<Modelo> (From Scratch)` | Inicialização aleatória dos pesos ➔ Treino direto no DatasetPests. |
 
 ---
@@ -70,7 +70,7 @@ Para clareza em gráficos, tabelas e no texto da dissertação, adotou-se a segu
 | **ConvNeXt-Tiny** | Proposta (IP102) | **93.32%** | **59.63%** | **58.17 ms** | ✅ Concluído (**80.81%** em imagens grandes >100px) |
 | **ConvNeXt-Tiny** | Baseline (ImageNet) | **94.39%** | **60.39%** | **57.89 ms** | ✅ Concluído (Modelo de alta capacidade ImageNet) |
 
-> 📌 **Status do Benchmark Oficial:** Todos os modelos acima foram avaliados de forma unificada e compõem as curvas de Pareto e a Tabela 1 oficial do artigo e da dissertação.
+> 📌 **Status do Benchmark Oficial:** Todos os modelos acima foram avaliados de forma unificada e compõem as curvas de Pareto e a Tabela 1 oficial do artigo científico.
 
 ---
 

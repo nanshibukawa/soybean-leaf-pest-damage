@@ -70,8 +70,8 @@ O benchmark avaliou **9 configurações principais** (e ConvNeXt-Tiny como model
 | **MobileNetV3-Small** | IP102 | **$224 \times 224$** | ~2.9M | **~1.0M** (1.014.778) | Ultra-leve (Maior salto relativo com IP102: +13.4% em teste externo) |
 | **MobileNetV3-Small** | ImageNet | **$224 \times 224$** | ~2.9M | ~1.0M | Comparativo direto de ablação |
 | **MobileViT (Custom)**| From Scratch | **$256 \times 256$** | ~5.6M | ~5.6M | Estudo de caso: ausência de viés indutivo em datasets pequenos |
-| *ConvNeXt-Tiny* | IP102 | **$224 \times 224$** | ~28.6M | ~28.6M | Modelo de alta capacidade (analisado na dissertação) |
-| *ConvNeXt-Tiny* | ImageNet | **$224 \times 224$** | ~28.6M | ~28.6M | Baseline de alta capacidade (analisado na dissertação) |
+| *ConvNeXt-Tiny* | IP102 | **$224 \times 224$** | ~28.6M | ~28.6M | Baseline de alta capacidade (análise comparativa) |
+| *ConvNeXt-Tiny* | ImageNet | **$224 \times 224$** | ~28.6M | ~28.6M | Baseline de alta capacidade (análise comparativa) |
 
 > 📌 **Nota sobre Contagem de Parâmetros:** Os valores nominais referem-se à arquitetura padrão com cabeça de 1.000 classes do ImageNet. Ao substituir a cabeça padrão pelo bloco enxuto `TopKGlobalAveragePooling2D` + `Dense(10)`, os modelos finais implantados em disco tornam-se consideravelmente mais leves (ex.: MobileNetV3-Large cai de 5.4M para 3.1M; B1 cai de 8.1M para 7.1M), o que reforça ainda mais sua adequação para dispositivos móveis.
 >
@@ -162,6 +162,7 @@ Dados extraídos com rigor dos arquivos [`performance_summary.csv`](../graphics/
 1. **Domínio Entomológico Vence em 100% dos Casos:** O pré-treino IP102 superou o ImageNet em todas as 12 comparações diretas. O MobileNetV3-Small (IP102) (0.898) superou inclusive o MobileNetV3-Large (ImageNet) (0.890), provando que representações de domínio importam mais que capacidade de parâmetros.
 2. **Por que a EfficientNetV2-B1 foi a escolhida:** Embora a B0 (IP102) tenha vencido no intra-domínio (0.956 vs 0.934), a **B1 (IP102) foi superior em todos os cenários zero-shot reais do INSECT12C** (0.681 vs 0.675 geral, 0.793 vs 0.769 em recortes médios, e 0.822 vs 0.804 em recortes grandes), garantindo maior resiliência a variações de iluminação e campo.
 3. **Fracasso do MobileViT Sem Pré-treino:** Confirmou empiricamente que arquiteturas baseadas em atenção pura sofrem com a falta de viés indutivo e colapsam quando treinadas do zero em bases agronômicas restritas (Macro-F1 de apenas 0.260 no INSECT12C).
+4. **Diagnóstico de Ruído Amostral e Polimorfismo Biológico (*Spodoptera albula*):** Auditoria empírica nos recortes minerados via API revelou espécimes na fase adulta (mariposas) e artefatos de detecção ao lado de lagartas canônicas. Essa distribuição bimodal explica o gap de generalização no teste externo zero-shot do INSECT12C (estritamente composto por lagartas) e serve de fundamentação para a discussão de erros do manuscrito. Detalhes em [`04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`](04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md).
 
 ---
 

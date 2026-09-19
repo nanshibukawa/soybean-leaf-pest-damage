@@ -85,7 +85,7 @@ pip install .[image-processing]
 │   ├── analysis/               # Grad-CAM e explicabilidade
 │   ├── main.py                 # Pipeline principal do classificador
 │   └── main_tuning.py          # Busca de hiperparâmetros (Keras Tuner)
-├── docs/                       # Relatórios e documentação técnica do mestrado (organizados cronologicamente)
+├── docs/                       # Relatórios e documentação técnica do projeto (organizados cronologicamente)
 │   ├── 01_ROTEIRO_TECNICO_E_METODOLOGICO.md # Fonte única da verdade técnica
 │   ├── 02_METODOLOGIA_E_DECISOES.md         # Rigor científico e controle experimental
 │   ├── 03_preparacao_dados/                 # Pipeline, limpeza iNaturalist e recortes
@@ -289,9 +289,9 @@ A resposta é validada por schema (RAGOutput/RAGResponse), garantindo formato co
 
 
 <a id="projeto"></a>
-## 🎓 Projeto
+## 🔬 Projeto de Pesquisa
 
-Desenvolvido como parte de pesquisa de mestrado.
+Desenvolvido como projeto de pesquisa científica em Visão Computacional e Edge AI (UTFPR).
 
 <a id="licenca"></a>
 ## 📄 Licença
