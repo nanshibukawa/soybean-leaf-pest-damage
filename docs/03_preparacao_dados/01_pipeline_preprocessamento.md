@@ -11,7 +11,7 @@ O pipeline transforma dados brutos heterogêneos (fotos de campo, anotações em
 ```mermaid
 flowchart TD
     subgraph INGESTAO ["1. Fontes de Dados Brutos (data_ingestion/)"]
-        A1["DatasetPests (Professores)\nFotos + CSVs Label-Studio"]
+        A1["DatasetPests (Anotação Manual)\nFotos iNaturalist + CSVs Label-Studio"]
         A2["iNaturalist API\nFotos mineradas (Larvas/Ninfas)"]
         A3["IP102 Dataset\n102 Classes de Insetos (XML)"]
         A4["INSECT12C Dataset\nBase Externa de Teste (XML)"]
@@ -76,10 +76,10 @@ Cada etapa do pipeline responde a um desafio prático identificado durante o des
 
 ### 1️⃣ Detecção YOLOv8 & Mineração iNaturalist
 * **Scripts**: `scripts/yolo_inaturalist/create_yolo_dataset.py`, `train_yolo.py`, `auto_crop_inaturalist.py`
-* **Função**: Converte as anotações dos professores para o formato YOLO, treina um detector `YOLOv8n` de classe única (`pest`) e utiliza esse modelo para localizar e recortar autonomamente as pragas das fotos mineradas do iNaturalist.
+* **Função**: Converte as anotações manuais do DatasetPests para o formato YOLO, treina um detector `YOLOv8n` de classe única (`pest`) e utiliza esse modelo para localizar e recortar autonomamente as pragas das fotos mineradas da API do iNaturalist.
 * **Saída**: Recortes com o prefixo `inat_` salvos em `artifacts/data/processed/DatasetPests-cropped/`.
 
-### 2️⃣ Recorte do DatasetPests (Professores)
+### 2️⃣ Recorte do DatasetPests (Anotação Manual)
 * **Script**: `scripts/data_preparation/prepare_dataset_pests.py`
 * **Parâmetros**: `--margin 0.20` (expansão de 20%).
 * **Função**: Lê as coordenadas relativas dos CSVs exportados do Label-Studio e gera os cultivos dos insetos originais.
@@ -87,7 +87,7 @@ Cada etapa do pipeline responde a um desafio prático identificado durante o des
 
 ### 3️⃣ Divisão Sem Vazamento
 * **Script**: `scripts/data_preparation/split_dataset_by_group.py`
-* **Parâmetros**: `--only-teachers` (opcional: desconsidera recortes `inat_` para isolar os dados do laboratório).
+* **Parâmetros**: `--only-teachers` (opcional: desconsidera recortes `inat_` para isolar os dados anotados manualmente no laboratório).
 * **Função**: Agrupa por imagem-mãe e divide em 90% Treino e 10% Validação de forma estratificada.
 * **Saída**: `artifacts/data/final/DatasetPests-split/train` e `val`.
 
@@ -111,6 +111,6 @@ Todo o fluxo documentado acima foi consolidado em um script bash automatizado e 
 # Execução padrão (margem 20%, dataset misto)
 bash scripts/run_preprocessing_pipeline.sh
 
-# Execução apenas com o dataset dos professores (margem 20%)
+# Execução apenas com o dataset de anotação manual (margem 20%)
 bash scripts/run_preprocessing_pipeline.sh 0.20 true
 ```

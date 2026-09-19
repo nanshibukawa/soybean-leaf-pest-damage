@@ -41,7 +41,7 @@ Para executar todo o pipeline de pré-processamento do zero em um único comando
 # Execução padrão (margem 20%, dataset misto)
 bash scripts/run_preprocessing_pipeline.sh
 
-# Execução apenas com dados dos professores (margem 20%)
+# Execução apenas com dados de anotação manual Label-Studio (margem 20%)
 bash scripts/run_preprocessing_pipeline.sh 0.20 true
 ```
 
@@ -80,11 +80,11 @@ python scripts/data_preparation/split_dataset_by_group.py
 
 ---
 
-### 3️⃣ Experimento: Dataset Apenas Professores vs. Dataset Misto (+iNaturalist)
+### 3️⃣ Experimento: Dataset Apenas com Anotação Manual vs. Dataset Misto (+iNaturalist Minerado)
 
-Para isolar o impacto do dataset minerado do iNaturalist vs. apenas dados do laboratório:
+Para isolar o impacto do dataset minerado do iNaturalist vs. apenas dados com anotação manual Label-Studio do laboratório:
 ```bash
-# Gerar split apenas com imagens dos professores
+# Gerar split apenas com imagens anotadas manualmente (flag --only-teachers)
 python scripts/data_preparation/split_dataset_by_group.py --only-teachers
 
 # Treinar modelo baseline

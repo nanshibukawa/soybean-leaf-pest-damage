@@ -21,8 +21,8 @@
 ## 🔬 2. Dados e Pré-Processamento
 
 ### 2.1. Fontes de Imagens
-1. **DatasetPests (Laboratório/Professores):** Base primária contendo fotografias de campo com anotações manuais de bounding boxes exportadas via Label-Studio (CSV).
-2. **iNaturalist API:** Mineração automatizada de fotos em condições reais brasileiras, filtrando fases de vida específicas (larvas/ninfas via `term_id=1`, `term_value_id=6`) para balancear espécies desfolhadoras.
+1. **DatasetPests (Anotação Manual no Label-Studio):** Base primária contendo fotografias de campo em condições reais brasileiras obtidas a partir da plataforma iNaturalist, com anotações manuais de caixas delimitadoras (*bounding boxes*) realizadas pela equipe do laboratório e exportadas via Label-Studio (CSV).
+2. **Mineração Automatizada iNaturalist API:** Mineração complementar automatizada via API do iNaturalist, com filtros de fase biológica (larvas/ninfas via `term_id=1`, `term_value_id=6`) para balancear espécies desfolhadoras e sugadoras, recortadas autonomamente pelo detector YOLOv8.
 3. **IP102 Dataset:** 102 classes de pragas agrícolas gerais (XML Pascal VOC) utilizado exclusivamente para o **pré-treinamento de domínio entomológico**.
 4. **INSECT12C Dataset:** Base externa independente (12 classes originais mapeadas para as 10 classes do projeto), utilizada exclusivamente para **avaliação zero-shot de robustez cruzada**.
 
@@ -42,7 +42,7 @@
 
 ### 2.3. Decisões de Pré-Processamento
 * **Recorte Anatômico com Margem Foliar (`--margin 0.20`):** Caixas delimitadoras muito justas (*tight crops*) deformavam o inseto ao serem interpoladas para $224\times224$ ou $240\times240$. A expansão de 20% preservou a morfologia do inseto e incluiu o contexto foliar imediato (tipo de perfuração/dano).
-* **Auto-Crop via YOLOv8:** Treinou-se um detector `YOLOv8n` de classe única (`pest`) nas anotações manuais dos professores para localizar e recortar autonomamente as pragas das imagens brutas do iNaturalist (`auto_crop_inaturalist.py`).
+* **Auto-Crop via YOLOv8:** Treinou-se um detector `YOLOv8n` de classe única (`pest`) nas anotações manuais do DatasetPests para localizar e recortar autonomamente as pragas das imagens brutas mineradas via API do iNaturalist (`auto_crop_inaturalist.py`).
 * **Group-based Stratified Split (Sem *Data Leakage*):**
   - **Divisão Real:** **90% Treino e 10% Validação** (`TRAIN_RATIO = 0.9`, `VALIDATION_RATIO = 0.1`, semente fixa `seed=42`).
   - **Critério de Agrupamento:** Todas as caixas delimitadoras recortadas da mesma imagem-mãe (folha original) foram forçadas a pertencer integralmente ou ao treino ou à validação (`split_dataset_by_group.py`). Isso impediu que o modelo memorizasse o fundo da folha.

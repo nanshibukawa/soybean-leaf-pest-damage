@@ -197,11 +197,12 @@ python scripts/main_tuning.py \
 <a id="dataset"></a>
 ## 📊 Dataset
 
-O pipeline de dados do projeto é composto por três fontes de imagens reais de pragas agrícolas da soja:
+O pipeline de dados do projeto é composto por quatro bases de imagens de pragas agrícolas:
 
-1. **DatasetPests (GDrive)**: Base principal contendo fotos de pragas e anotações manuais de bounding boxes (Label-Studio CSV) feitas pelos professores.
-2. **iNaturalist API**: Imagens de campo adicionais mineradas de forma automatizada para mitigar o desbalanceamento severo de classes.
-3. **INSECT12C**: Base de dados externa usada para validação cruzada e teste de robustez independente.
+1. **DatasetPests**: Base primária contendo fotografias de campo em condições reais obtidas a partir da plataforma iNaturalist, com anotações manuais de caixas delimitadoras (*bounding boxes*) realizadas pela equipe do laboratório via Label-Studio (CSV).
+2. **Mineração Automatizada iNaturalist API**: Imagens de campo adicionais mineradas via API do iNaturalist (filtradas por fase de vida) e recortadas autonomamente via detector YOLOv8 para mitigar o desbalanceamento severo de classes.
+3. **IP102**: Base com 102 classes de pragas agrícolas gerais utilizada para o pré-treinamento de domínio entomológico (*Domain-Specific Pre-training*).
+4. **INSECT12C**: Base de teste externa independente utilizada para validação cruzada e teste de robustez *zero-shot*.
 
 ### Organização de Diretórios sob `artifacts/data/`
 

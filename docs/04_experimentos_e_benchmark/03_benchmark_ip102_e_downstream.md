@@ -45,8 +45,9 @@ Após a transferência do aprendizado do IP102, os modelos foram submetidos a fi
 | **EfficientNetV2-B0 (IP102)** | 94,84% | 64,13% | 76,28% | 83,70% | **0,9559** 🏆 | 0,6748 |
 | **EfficientNetV2-B1 (IP102)** | 94,30% | **64,59%** 🏆 | **78,02%** 🏆 | **85,91%** 🏆 | 0,9345 | **0,6806** 🏆 (0,8215 >100px) |
 | **ConvNeXt-Tiny (IP102)** | 93,32% | 59,63% | 73,04% | 80,81% | 0,9348 | 0,6247 |
+| **ConvNeXt-Tiny (ImageNet)** | 94,39% | 60,39% | 74,35% | 83,02% | 0,9504 | 0,6429 |
 
-> 📌 **Nota Metodológica:** A coluna *Val Acc* refere-se ao particionamento de validação sem vazamento do **DatasetPests** (imagens de folhas da soja do laboratório e iNaturalist). O **INSECT12C** atua estritamente como a base de teste externa de robustez (zero-shot, sem fine-tuning).
+> 📌 **Nota Metodológica:** A coluna *Val Acc* refere-se ao particionamento de validação sem vazamento do **DatasetPests** (amostras em condições reais do iNaturalist com anotações manuais via Label-Studio e mineração complementar). O **INSECT12C** atua estritamente como a base de teste externa de robustez (zero-shot, sem fine-tuning).
 
 ---
 
