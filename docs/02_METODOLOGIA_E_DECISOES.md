@@ -24,14 +24,11 @@ Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 
 
 ## 2. ⚖️ Decisão Metodológica: Otimização de Hiperparâmetros (Keras Tuner)
 
-### Dúvida Histórica da Pesquisa:
-> *"Para comparação do baseline e do IP102, deve-se utilizar exatamente os mesmos hiperparâmetros fixos, ou cada um deve ser tunado?"*
-
-### Decisão Adotada: **Tuning Bayesiano Independente**
-* **Justificativa Teórica**:
-  - A superfície de erro (*loss landscape*) de uma rede que parte dos pesos gerais do **ImageNet** é fundamentalmente diferente de uma rede que já foi pré-treinada no domínio entomológico do **IP102**.
-  - Se forçássemos os mesmos hiperparâmetros (ex: mesma taxa de aprendizado ou mesmo número de camadas descongeladas), introduziríamos um **viés de seleção**: a banca poderia apontar que o Baseline perdeu não pela limitação do ImageNet, mas porque a taxa de aprendizado escolhida favorecia a convergência do modelo IP102.
-  - Ao executar uma **Otimização Bayesiana (Keras Tuner com 30 trials)** em ambos, garantimos uma comparação do **potencial máximo de cada abordagem** (*fair apple-to-apple comparison*).
+### Abordagem Adotada: **Otimização Bayesiana Independente**
+* **Justificativa Metodológica**:
+  - A superfície de perda (*loss landscape*) de uma arquitetura que parte dos pesos genéricos do **ImageNet** é fundamentalmente diferente de uma arquitetura previamente adaptada ao domínio entomológico do **IP102**.
+  - A imposição de hiperparâmetros fixos compartilhados (ex.: mesma taxa de aprendizado ou número de camadas descongeladas) introduziria um **viés de seleção**: o baseline poderia apresentar desempenho inferior não por deficiência representacional dos pesos ImageNet, mas pela subotimalidade da taxa de aprendizado para a sua dinâmica de convergência específica.
+  - Ao executar **Otimização Bayesiana (Keras Tuner com 30 trials)** de forma independente para cada configuração, viabilizou-se a comparação do **potencial ótimo de cada abordagem** (*fair comparison*).
 
 ### Espaço de Busca Otimizado:
 * **Taxa de Aprendizado ($lr$)**: Busca logarítmica entre $10^{-6}$ e $10^{-3}$.

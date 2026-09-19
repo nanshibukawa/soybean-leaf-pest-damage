@@ -61,7 +61,7 @@ O benchmark avaliou **9 configurações principais** (e ConvNeXt-Tiny como model
 
 ### 3.1. Resolução e Especificações Técnicas por Modelo
 
-| Modelo | Pré-Treinamento | Resolução Alvo | Parâmetros Nominais (Ref.) | Parâmetros Reais em Disco (10 classes + Top-K) | Papel no Benchmark |
+| Modelo | Pré-Treinamento | Resolução Alvo | Parâmetros Nominais (Ref.) | Parâmetros Finais (10 Classes) | Papel no Benchmark |
 | :--- | :---: | :---: | :---: | :---: | :--- |
 | **EfficientNetV2-B1** | IP102 | **$240 \times 240$** | ~8.1M | **~7.1M** (7.096.894) | **Modelo Selecionado para Borda** (Líder em robustez zero-shot) |
 | **EfficientNetV2-B1** | ImageNet | **$240 \times 240$** | ~8.1M | ~7.1M | Comparativo direto de ablação |
@@ -75,7 +75,7 @@ O benchmark avaliou **9 configurações principais** (e ConvNeXt-Tiny como model
 | *ConvNeXt-Tiny* | IP102 | **$224 \times 224$** | ~28.6M | ~28.6M | Baseline de alta capacidade (análise comparativa) |
 | *ConvNeXt-Tiny* | ImageNet | **$224 \times 224$** | ~28.6M | ~28.6M | Baseline de alta capacidade (análise comparativa) |
 
-> 📌 **Nota sobre Contagem de Parâmetros:** Os valores nominais referem-se à arquitetura padrão com cabeça de 1.000 classes do ImageNet. Ao substituir a cabeça padrão pelo bloco enxuto `TopKGlobalAveragePooling2D` + `Dense(10)`, os modelos finais implantados em disco tornam-se consideravelmente mais leves (ex.: MobileNetV3-Large cai de 5.4M para 3.1M; B1 cai de 8.1M para 7.1M), o que reforça ainda mais sua adequação para dispositivos móveis.
+> 📌 **Nota sobre a Contagem de Parâmetros:** Os valores nominais referem-se à arquitetura padrão da literatura com cabeça original de 1.000 classes do ImageNet. A contagem final reflete a adaptação da camada densa de saída para as 10 classes-alvo de pragas do projeto.
 >
 > 📌 **Especificação de Resoluções:** O modelo implantado em produção (**EfficientNetV2-B1**) opera nativamente a **$240 \times 240$**, enquanto os backbones MobileNetV3, ConvNeXt e EfficientNetV2-B0 operam a $224 \times 224$, e o MobileViT a $256 \times 256$.
 
@@ -92,7 +92,7 @@ Para manter o modelo leve, enxuto e reprodutível, a arquitetura final adotada e
 ## ⚙️ 4. Treinamento, Otimização e Controle Experimental
 
 ### 4.1. Rigor Experimental (*Ceteris Paribus*)
-Para que a comparação ImageNet vs. IP102 fosse irrefutável perante revisores e banca examinadora:
+Para assegurar o rigor comparativo e a validade metodológica entre os regimes de pré-treinamento (ImageNet vs. IP102), foram rigorosamente controladas as seguintes variáveis (*ceteris paribus*):
 * **Mesmo particionamento** e mesma semente aleatória (`seed=42`).
 * **Mesmo pipeline de Data Augmentation:** Inspecionado diretamente no grafo salvo dos modelos, composto por:
   1. *Gaussian Noise* (ruído de sensor móvel);
@@ -130,10 +130,7 @@ Para que a comparação ImageNet vs. IP102 fosse irrefutável perante revisores 
   - Preservação de 99.9% da precisão numérica em comparação com FP32.
   - Compatibilidade com aceleradores neurais (GPU / NPU móveis).
 
-### 5.2. Requisitos Técnicos de Execução Android
-* **Nível Mínimo de API:** **Android 5.0 (API nível 21)** ou recomendada **Android 7.0 (API nível 24)** para total compatibilidade com o runtime C++/Java do TensorFlow Lite.
-
-### 5.3. Latência e Categorias de Hardware (*Profiling Tiers*)
+### 5.2. Latência e Categorias de Hardware (*Profiling Tiers*)
 As latências do benchmark consolidado (`scripts/generate_benchmark_data.py`) foram calculadas a partir de medição empírica direta e escalonamento por profiling:
 1. **High-End Tier (GPU de referência):** ~59 a 63 ms por inferência (permite classificação contínua em tempo real).
 2. **Mid-End Tier (Profiling Scale $2.5\times$):** ~148 a 158 ms por inferência (equivalente a processadores intermediários Snapdragon 7-series / Dimensity).
@@ -145,7 +142,7 @@ As latências do benchmark consolidado (`scripts/generate_benchmark_data.py`) fo
 
 ## 📊 6. Tabela Oficial de Desempenho Consolidado
 
-Dados extraídos com rigor dos arquivos [`performance_summary.csv`](../graphics/output/performance_summary.csv) e [`resolution_summary_insect12c.csv`](../graphics/output/resolution_summary_insect12c.csv):
+Métricas consolidadas a partir das avaliações experimentais ([`performance_summary.csv`](../graphics/output/performance_summary.csv) e [`resolution_summary_insect12c.csv`](../graphics/output/resolution_summary_insect12c.csv)):
 
 | Modelo | Pré-Treinamento | DatasetPests (Val) <br> **Macro-F1** | INSECT12C (All) <br> **Macro-F1** | INSECT12C (>60px) <br> **Macro-F1** | INSECT12C (>100px) <br> **Macro-F1** | Pareto Frontier (Borda) |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
@@ -154,17 +151,20 @@ Dados extraídos com rigor dos arquivos [`performance_summary.csv`](../graphics/
 | **MobileNetV3-Small** | IP102 | 0.898 | 0.596 | 0.680 | 0.704 | Não |
 | **MobileNetV3-Large** | ImageNet | 0.890 | 0.624 | 0.718 | 0.745 | Sim |
 | **MobileNetV3-Large** | IP102 | **0.943** | 0.644 | 0.746 | 0.803 | Sim |
-| **EfficientNetV2-B1** | ImageNet | 0.871 | 0.608 | 0.717 | 0.766 | Não |
-| **EfficientNetV2-B1** (Vencedor) | **IP102** | **0.934** | <span style="color:green">**0.681**</span> | <span style="color:green">**0.793**</span> | <span style="color:green">**0.822**</span> | **Sim (Ótimo Global)** |
 | **EfficientNetV2-B0** | ImageNet | 0.892 | 0.630 | 0.723 | 0.763 | Não |
 | **EfficientNetV2-B0** | IP102 | <span style="color:blue">**0.956**</span> | 0.675 | 0.769 | 0.804 | Não |
-| *Média Geral* | — | **0.852** | **0.580** | **0.670** | **0.696** | — |
+| **EfficientNetV2-B1** | ImageNet | 0.871 | 0.608 | 0.717 | 0.766 | Não |
+| **EfficientNetV2-B1** (Vencedor) | **IP102** | **0.934** | <span style="color:green">**0.681**</span> | <span style="color:green">**0.793**</span> | <span style="color:green">**0.822**</span> | **Sim (Ótimo Global)** |
+| *ConvNeXt-Tiny* (Alta Cap.) | ImageNet | **0.950** | 0.643 | 0.743 | 0.819 | Não |
+| *ConvNeXt-Tiny* (Alta Cap.) | IP102 | 0.935 | 0.625 | 0.741 | 0.783 | Não |
+| *Média Geral* | — | **0.868** | **0.590** | **0.683** | **0.715** | — |
 
 ### Principais Conclusões Científicas:
-1. **Domínio Entomológico Vence em 100% dos Casos:** O pré-treino IP102 superou o ImageNet em todas as 12 comparações diretas. O MobileNetV3-Small (IP102) (0.898) superou inclusive o MobileNetV3-Large (ImageNet) (0.890), provando que representações de domínio importam mais que capacidade de parâmetros.
-2. **Por que a EfficientNetV2-B1 foi a escolhida:** Embora a B0 (IP102) tenha vencido no intra-domínio (0.956 vs 0.934), a **B1 (IP102) foi superior em todos os cenários zero-shot reais do INSECT12C** (0.681 vs 0.675 geral, 0.793 vs 0.769 em recortes médios, e 0.822 vs 0.804 em recortes grandes), garantindo maior resiliência a variações de iluminação e campo.
-3. **Fracasso do MobileViT Sem Pré-treino:** Confirmou empiricamente que arquiteturas baseadas em atenção pura sofrem com a falta de viés indutivo e colapsam quando treinadas do zero em bases agronômicas restritas (Macro-F1 de apenas 0.260 no INSECT12C).
-4. **Diagnóstico de Ruído Amostral e Polimorfismo Biológico (*Spodoptera albula*):** Auditoria empírica nos recortes minerados via API revelou espécimes na fase adulta (mariposas) e artefatos de detecção ao lado de lagartas canônicas. Essa distribuição bimodal explica o gap de generalização no teste externo zero-shot do INSECT12C (estritamente composto por lagartas) e serve de fundamentação para a discussão de erros do manuscrito. Detalhes em [`04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`](04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md).
+1. **Domínio Entomológico Vence em 100% dos Casos nas Arquiteturas Leves ($\le 8\text{M}$):** Para os modelos projetados para borda (MobileNetV3 e EfficientNetV2), o pré-treino IP102 superou o ImageNet em todas as 12 comparações diretas de resolução. O MobileNetV3-Small (IP102) (0.898) superou inclusive o MobileNetV3-Large (ImageNet) (0.890), indicando empiricamente que a especialização de domínio compensa limitações de capacidade paramétrica em modelos compactos.
+2. **Comportamento e Hipótese em Modelos de Alta Capacidade (ConvNeXt-Tiny — 28.6M):** No caso do ConvNeXt-Tiny, a inicialização ImageNet apresentou desempenho ligeiramente superior ao pré-treino IP102 (0.950 vs 0.935 na validação e 0.643 vs 0.625 no teste externo). Esse resultado levanta a **hipótese** de que arquiteturas com alta capacidade de parâmetros demandam a diversidade em escala massiva do ImageNet (1.28M imagens) para evitar subotimalidade em bases menores de domínio (IP102 — 75k imagens). Como apenas uma arquitetura pesada foi avaliada, trata-se de uma hipótese a ser investigada em trabalhos futuros, mantendo a conclusão empírica de que os benefícios consistentes do pré-treino IP102 se manifestaram nas redes leves de borda.
+3. **Por que a EfficientNetV2-B1 foi a escolhida:** Embora a B0 (IP102) tenha vencido no intra-domínio (0.956 vs 0.934), a **B1 (IP102) foi superior em todos os cenários zero-shot reais do INSECT12C** (0.681 vs 0.675 geral, 0.793 vs 0.769 em recortes médios, e 0.822 vs 0.804 em recortes grandes), garantindo maior resiliência a variações de iluminação e campo.
+4. **Fracasso do MobileViT Sem Pré-treino:** Confirmou empiricamente que arquiteturas baseadas em atenção pura sofrem com a falta de viés indutivo e colapsam quando treinadas do zero em bases agronômicas restritas (Macro-F1 de apenas 0.260 no INSECT12C).
+5. **Diagnóstico de Ruído Amostral e Polimorfismo Biológico (*Spodoptera albula*):** Auditoria empírica nos recortes minerados via API revelou espécimes na fase adulta (mariposas) e artefatos de detecção ao lado de lagartas canônicas. Essa distribuição bimodal explica o gap de generalização no teste externo zero-shot do INSECT12C (estritamente composto por lagartas) e serve de fundamentação para a discussão de erros do manuscrito. Detalhes em [`04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`](04_experimentos_e_benchmark/06_analise_qualitativa_ruido_mineracao_e_polimorfismo.md).
 
 ---
 
