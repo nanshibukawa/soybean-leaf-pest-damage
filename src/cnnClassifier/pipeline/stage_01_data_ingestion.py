@@ -22,52 +22,41 @@ class DataIngestionPipeline:
 
     def main(self) -> Path:
         try:
-            # 1. Cria diretórios
-            create_dirs(self.config.root_dir)
-            
-            # 2. Baixa e extrai DatasetPests
-            logger.info("📦 Ingestão: Baixando DatasetPests...")
-            zip_path = download_file(
-                self.config.source_URL,
-                self.config.local_datafile
-            )
-            data_path = extract_zip(zip_path, self.config.unzip_dir)
-            
-            # 3. Baixa e extrai iNaturalist Raw
-            logger.info("📦 Ingestão: Baixando iNaturalist Raw (Google Drive)...")
-            inat_zip_path = download_file(
-                self.config.inat_raw_url,
-                self.config.inat_raw_zip
-            )
-            extract_zip(inat_zip_path, self.config.inat_unzip_dir)
-            
-            # 4. Baixa e extrai INSECT12C
-            logger.info("📦 Ingestão: Baixando INSECT12C Dataset (GitHub)...")
-            insect_zip_path = download_file(
-                self.config.insect12c_url,
-                self.config.insect12c_zip
-            )
-            extract_zip(insect_zip_path, self.config.insect12c_unzip_dir)
-            
-            # 5. Baixa e extrai Dataset Final + IP102 Cropped (Google Drive)
+            # Garante os datasets finais prontos para treino e benchmark (DatasetPests-split, INSECT12C-test, IP102)
             final_pests_dir = self.config.data_final_dir / "final" / "DatasetPests-split"
             ip102_cropped_dir = self.config.data_final_dir / "ip102_cropped"
+            insect12c_test_dir = self.config.data_final_dir / "final" / "INSECT12C-test"
             
-            if not final_pests_dir.exists() or not ip102_cropped_dir.exists():
-                logger.info("📦 Ingestão: Baixando Dataset Final e IP102 Cropped (Google Drive)...")
+            if not final_pests_dir.exists() or not ip102_cropped_dir.exists() or not insect12c_test_dir.exists():
+                logger.info("📦 Ingestão: Baixando Dataset Final e IP102 Cropped do Google Drive (~516 MB)...")
+                create_dirs(self.config.data_final_dir)
                 final_zip_path = download_file(
                     self.config.data_final_url,
                     self.config.data_final_zip
                 )
                 extract_zip(final_zip_path, self.config.data_final_dir)
+                logger.info("✅ Dataset Final e IP102 Cropped extraídos com sucesso!")
             else:
-                logger.info("✅ Dataset Final e IP102 Cropped já presentes.")
+                logger.info("✅ Dataset Final e IP102 Cropped já presentes localmente.")
             
-            logger.info(f"✅ Todos os dados baixados e extraídos com sucesso!")
-            return data_path
+            return final_pests_dir
             
         except Exception as e:
-            logger.error(f"Erro na ingestão: {e}")
+            logger.error(f"Erro na ingestão de dados: {e}")
+            raise
+
+    def download_raw_datasets(self):
+        """Baixa os datasets brutos originais (apenas para pipelines de recorte/pré-processamento)."""
+        try:
+            create_dirs(self.config.root_dir)
+            logger.info("📦 Ingestão: Baixando DatasetPests bruto...")
+            download_file(self.config.source_URL, self.config.local_datafile)
+            logger.info("📦 Ingestão: Baixando iNaturalist Raw...")
+            download_file(self.config.inat_raw_url, self.config.inat_raw_zip)
+            logger.info("📦 Ingestão: Baixando INSECT12C Dataset...")
+            download_file(self.config.insect12c_url, self.config.insect12c_zip)
+        except Exception as e:
+            logger.error(f"Erro na ingestão de dados brutos: {e}")
             raise
 
 if __name__ == "__main__":

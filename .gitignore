@@ -59,9 +59,11 @@ scratch/
 *.txt
 *.csv
 
-# Ignore all markdown files, but EXCLUDE README.md so it is tracked
+# Ignore all markdown files, but EXCLUDE README.md and docs/ so they are tracked
 *.md
 !README.md
+!docs/**/*.md
+!docs/*.md
 
 # RAG / Qdrant
 src/rag/qdrant_storage/

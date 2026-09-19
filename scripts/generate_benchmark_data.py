@@ -27,6 +27,16 @@ from cnnClassifier.components.prepare_model import TopKGlobalAveragePooling2D, P
 from cnnClassifier.models.custom_blocks import SpatialAttentionFeatureReduction, ResidualSRCNNBlock
 from cnnClassifier.utils.data_utils import register_preprocess_input
 
+# Patch de compatibilidade para inicializadores entre versoes de Keras (ex: TF 2.21 -> TF 2.20)
+try:
+    import keras
+    orig_glorot_init = keras.initializers.GlorotUniform.__init__
+    def _patched_glorot_init(self, seed=None, **kwargs):
+        return orig_glorot_init(self, seed=seed)
+    keras.initializers.GlorotUniform.__init__ = _patched_glorot_init
+except Exception:
+    pass
+
 logger = configure_logger("generate_benchmark_data")
 
 # Diretórios padrão
@@ -84,6 +94,16 @@ MODELS_CONFIG = {
         "file": MODELS_DIR / "mobile/mobilevit-custom_keras_tuner_best.keras",
         "target_size": (256, 256),
         "display_name": "MobileViT (From Scratch)"
+    },
+    "convnexttiny_trained": {
+        "file": MODELS_DIR / "convnexttiny_trained.keras",
+        "target_size": (224, 224),
+        "display_name": "ConvNeXt-Tiny (ImageNet)"
+    },
+    "convnexttiny_best": {
+        "file": MODELS_DIR / "mobile/ConvNeXtTiny_keras_tuner_best.keras",
+        "target_size": (224, 224),
+        "display_name": "ConvNeXt-Tiny (IP102)"
     }
 }
 
