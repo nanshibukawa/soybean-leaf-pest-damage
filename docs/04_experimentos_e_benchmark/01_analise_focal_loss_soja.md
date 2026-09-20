@@ -1,6 +1,9 @@
-# 📑 Fundamentação da Categorical Focal Loss e Particionamento Anti-Vazamento
+# 📑 Fundamentação Teórica da Categorical Focal Loss
 
-Este documento fundamenta a escolha da **Categorical Focal Crossentropy** em substituição ao sobreaumento artificial (*oversampling*), detalhando a dinâmica de gradientes, a calibração para o catálogo de 10 classes e a estratégia de particionamento estratificado sem vazamento de dados (*Group-based Split*), incorporando as duas réguas de avaliação do projeto: **DatasetPests** (treino e validação) e **INSECT12C** (teste independente).
+Este documento fundamenta a escolha da **Categorical Focal Crossentropy** em substituição ao sobreaumento artificial (*oversampling*), detalhando a dinâmica de gradientes, a mitigação do desequilíbrio amostral e a calibração de hiperparâmetros para o catálogo de 10 classes de pragas da soja.
+
+> [!NOTE]
+> Para a documentação detalhada da esteira de dados, margem foliar de +20%, auto-crop YOLOv8 e particionamento agrupado por imagem-mãe (*Group-based Split* anti-vazamento), consulte [03_PIPELINE_PREPROCESSAMENTO.md](../03_PIPELINE_PREPROCESSAMENTO.md).
 
 ---
 
@@ -50,32 +53,7 @@ Essa ponderação é **adaptativa por instância** (*sample-wise*), tratando cad
 
 ---
 
-## 3. Arquitetura de Particionamento e Mitigação de Vazamento (Anti-Leakage)
-
-A esteira de dados foi desenhada para assegurar controle experimental rigoroso em dois níveis complementares:
-
-```
-[DatasetPests] ──> [Recortes com Margem +20%] ──> [split_dataset_by_group.py] ──> Partição Sem Vazamento
-                                                                                   ├── Treino (90% das Imagens-Mãe)
-                                                                                   └── Validação (10% das Imagens-Mãe) 🟢 LIMPO
-
-[INSECT12C] ───> [Recortes com Bounding Boxes] ──────────────────────────────────> Teste Independente Zero-Shot 🟢 LIMPO
-```
-
-### 1. Independência do Teste Externo (INSECT12C)
-O conjunto de teste é baseado no benchmark **INSECT12C**, uma base externa independente de fotografias agrícolas. Como não há compartilhamento de fotos com o `DatasetPests`, os resultados reportados avaliam a capacidade real de generalização da arquitetura em cenários não vistos durante o treinamento.
-
-### 2. Particionamento Agrupado por Imagem-Mãe (Group-based Split)
-Múltiplos recortes de insetos podem provir de uma mesma folha fotografada em lavoura. Um particionamento puramente aleatório poderia alocar um recorte da folha no treino e outro recorte da mesma folha na validação, permitindo que a rede memorize a textura do fundo foliar em vez da morfologia da praga.
-
-* **Solução Adotada:** O script `split_dataset_by_group.py` agrupa os recortes pelo identificador único da foto original (imagem-mãe). Garante-se que 100% dos recortes derivados de uma foto pertençam estritamente ao conjunto de **Treino** ou de **Validação**.
-
-### 3. Preservação da Distribuição Natural de Amostras
-Ao adotar a `CategoricalFocalCrossentropy`, elimina-se a necessidade de duplicar amostras para balancear classes minoritárias. O modelo treina diretamente sobre a distribuição natural de recortes, prevenindo sobreajuste (*overfitting*) em cópias artificiais.
-
----
-
-## 4. Calibração de Hiperparâmetros no Cenário de 10 Classes
+## 3. Calibração de Hiperparâmetros no Cenário de 10 Classes
 
 Em classificação multiclasse de 10 classes, os parâmetros $\gamma$ e $\alpha$ requerem calibração cuidadosa:
 
@@ -91,9 +69,13 @@ $$w_y = \frac{1 - \beta}{1 - \beta^{n_y}}$$
 
 Onde $n_y$ é a contagem de amostras da classe $y$, e $\beta = 0.999$ atua como fator de amortecimento, impedindo que classes minoritárias gerem gradientes desproporcionais nas primeiras épocas de convergência.
 
+Na esteira de treinamento do projeto (`src/cnnClassifier/components/model_training.py`), o vetor de pesos resultante é normalizado pela sua média ($\bar{w} = 1.0$), preservando a escala nominal da função de perda:
+
+$$\alpha_y = \frac{w_y}{\frac{1}{C} \sum_{c=1}^C w_c}$$
+
 ---
 
-## 5. Dinâmica de Convergência e Monitoramento Experimental
+## 4. Dinâmica de Convergência e Monitoramento Experimental
 
 ### A. Escala da Perda Focal
 O valor numérico absoluto da perda Focal inicial é tipicamente inferior ao de uma Cross Entropy convencional. Para 10 classes, uma Cross Entropy inicial inicia próxima de $-\ln(0.1) \approx 2.3$, enquanto com $\gamma=1.5$, a Focal Loss inicial situa-se na faixa de $0.15$ a $0.40$.
@@ -103,3 +85,10 @@ Com o particionamento agrupado por imagem-mãe e a eliminação de vazamento, a 
 
 ### C. Equilíbrio entre Precisão e Cobertura (Precision vs. Recall)
 O balanceamento adequado de $\gamma$ e do vetor $\alpha$ assegura que as classes minoritárias obtenham crescimento contínuo de Recall sem provocar a proliferação de falsos positivos, mantendo elevado o Macro F1-Score do benchmark.
+
+---
+
+## 5. Referências Bibliográficas
+
+1. **LIN, Tsung-Yi; GOYAL, Priya; GIRSHICK, Ross; HE, Kaiming; DOLLÁR, Piotr.** *Focal Loss for Dense Object Detection*. In: Proceedings of the IEEE International Conference on Computer Vision (ICCV), 2017, pp. 2980-2988. DOI: [10.1109/ICCV.2017.324](https://doi.org/10.1109/ICCV.2017.324).
+2. **CUI, Yin; JIA, Menglin; LIN, Tsung-Yi; SONG, Yang; BELONGIE, Serge.** *Class-Balanced Loss Based on Effective Number of Samples*. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2019, pp. 9268-9277. DOI: [10.1109/CVPR.2019.00949](https://doi.org/10.1109/CVPR.2019.00949).

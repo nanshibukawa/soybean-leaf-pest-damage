@@ -3,7 +3,7 @@
 
 > [!NOTE] ESTUDO PRELIMINAR DE ABLAÇÃO (JULHO/2026 - SGD COM PARÂMETROS FIXOS)
 > Este documento registra o primeiro estudo de ablação comparando IP102 vs. ImageNet utilizando hiperparâmetros fixos de SGD.
-> Na etapa posterior da pesquisa, realizou-se a **Otimização Bayesiana via Keras Tuner (30 trials)** para todas as 9 arquiteturas leves, elevando o desempenho final da EfficientNetV2-B1 para **94.30% de acurácia / 0.934 de Macro-F1 no DatasetPests** e **0.822 no INSECT12C (>100px)**, conforme consolidado oficialmente em [`docs/01_ROTEIRO_TECNICO_E_METODOLOGICO.md`](../../docs/01_ROTEIRO_TECNICO_E_METODOLOGICO.md).
+> Na etapa posterior da pesquisa, realizou-se a **Otimização Bayesiana via Keras Tuner (30 trials)** para todas as 9 arquiteturas leves, elevando o desempenho final da EfficientNetV2-B1 para **94.30% de acurácia / 0.934 de Macro-F1 no DatasetPests** e **0.822 no INSECT12C (>100px)**, conforme consolidado oficialmente em [`docs/01_ROTEIRO_TECNICO_E_METODOLOGICO.md`](../01_ROTEIRO_TECNICO_E_METODOLOGICO.md).
 
 **Projeto de Pesquisa:** Sistema de Detecção e Classificação de Danos por Pragas em Folhas de Soja  
 **Autor:** Nan Shibukawa  
