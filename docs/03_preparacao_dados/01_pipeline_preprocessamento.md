@@ -19,8 +19,8 @@ flowchart TD
 
     subgraph PREPROC ["2. Processamento e Recorte (scripts/data_preparation/)"]
         B1["Detector YOLOv8n<br/>Treino nas BBoxes"]
-        B2["Auto-Crop YOLOv8<br/>Detecção e Recorte"]
-        B3["Prepare DatasetPests<br/>Crop c/ Margem +20%"]
+        B2["Auto-Crop YOLOv8<br/>Recorte de Fotos da API"]
+        B3["Prepare DatasetPests<br/>Recorte via CSV (+20% Margem)"]
         B4["Prepare IP102<br/>Crop em 102 Classes"]
         B5["Prepare INSECT12C<br/>Mapeamento 10 Classes"]
     end
