@@ -18,7 +18,11 @@ Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 
 * **Pipeline de Data Augmentation**:
   - Idêntico para todos os modelos: *CutMix*, *RandomFlip* (horizontal e vertical), *RandomTranslation* (15%), *RandomZoom* (20%) e *Gaussian Noise* (0.03).
 * **Função de Perda (*Loss Function*)**:
-  - *Categorical Focal Loss* com $\gamma=1.5$ e ponderação dinâmica $\alpha$ calculada por classe para equilibrar classes raras.
+  - *Categorical Focal Loss* com $\gamma=1.5$ e ponderação dinâmica $\alpha$ calculada por classe via Número Efetivo de Amostras (Cui et al., CVPR 2019) para equilibrar classes raras.
+* **Estratégia de Otimização no Pré-treino de Domínio (Passo 1 — IP102)**:
+  - **SGD com Momentum (0.9) e Nesterov** (Wilson et al., 2017): Adotado no pré-treinamento em larga escala por induzir superfícies de perda com maior capacidade de generalização em visão computacional quando comparado a otimizadores adaptativos sem regularização estrita.
+  - **Linear Warmup (5 épocas)** (Goyal et al., 2017): Inicialização suave em $10^{-4}$ com elevação linear até o pico de $10^{-2}$, impedindo que os gradientes elevados da cabeça densa recém-inicializada desestabilizem os pesos convolucionais do backbone (*catastrophic forgetting*).
+  - **Cosine Decay Learning Rate Schedule** (Loshchilov & Hutter, 2017): Desaceleração contínua e suave da taxa de atualização até a época 50 ($10^{-4}$), guiando os pesos a mínimos planos estáveis (*flat minima*).
 
 ---
 
@@ -113,3 +117,13 @@ Para garantir reprodutibilidade sem necessidade de downloads manuais pesados, o 
 .venv/bin/python graphics/benchmark_graficos_avaliacao_predicao.py
 ```
 Os arquivos gerados são salvos automaticamente em `graphics/output/`.
+
+---
+
+## 7. 📚 Referências Bibliográficas
+
+1. **CUI, Yin; JIA, Menglin; LIN, Tsung-Yi; SONG, Yang; BELONGIE, Serge.** *Class-Balanced Loss Based on Effective Number of Samples*. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), 2019, pp. 9268-9277. DOI: [10.1109/CVPR.2019.00949](https://doi.org/10.1109/CVPR.2019.00949).
+2. **GOYAL, Priya; DOLLÁR, Piotr; GIRSHICK, Ross; NOORDHUIS, Pieter; WESOLOWSKI, Lukasz; KYROLA, Aapo; TULLOCH, Andrew; JIA, Yangqing; HE, Kaiming.** *Accurate, Large Minibatch SGD: Training ImageNet in 1 Hour*. arXiv preprint arXiv:1706.02677, 2017. DOI: [10.48550/arXiv.1706.02677](https://doi.org/10.48550/arXiv.1706.02677).
+3. **LIN, Tsung-Yi; GOYAL, Priya; GIRSHICK, Ross; HE, Kaiming; DOLLÁR, Piotr.** *Focal Loss for Dense Object Detection*. In: Proceedings of the IEEE International Conference on Computer Vision (ICCV), 2017, pp. 2980-2988. DOI: [10.1109/ICCV.2017.324](https://doi.org/10.1109/ICCV.2017.324).
+4. **LOSHCHILOV, Ilya; HUTTER, Frank.** *SGDR: Stochastic Gradient Descent with Warm Restarts*. In: International Conference on Learning Representations (ICLR), 2017. DOI: [10.48550/arXiv.1608.03983](https://doi.org/10.48550/arXiv.1608.03983).
+5. **WILSON, Ashia C.; ROELOFS, Rebecca; STERN, Mitchell; SREBRO, Nathan; RECHT, Benjamin.** *The Marginal Value of Adaptive Gradient Methods in Machine Learning*. In: Advances in Neural Information Processing Systems (NeurIPS), v. 30, 2017, pp. 4148-4158.

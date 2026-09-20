@@ -37,7 +37,7 @@ flowchart TD
 4. [**`04_experimentos_e_benchmark/01_analise_focal_loss_soja.md`**](04_experimentos_e_benchmark/01_analise_focal_loss_soja.md):  
    Dedução matemática da *Categorical Focal Loss* ($\gamma = 1.5$) demonstrando por que a Cross-Entropy com pesos simples destruía a precisão das classes raras.
 5. [**`04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md`**](04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md):  
-   Comparação detalhada com o Estado da Arte (SOTA 2019–2026) da literatura no IP102 e resultados downstream do fine-tuning para todos os modelos avaliados.
+   Avaliação comparativa das 5 arquiteturas leves de borda no pré-treinamento IP102 (102 classes) e transferência downstream para o dataset da soja e teste zero-shot INSECT12C.
 6. [**`04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md`**](04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md):  
    Estudo preliminar de ablação (rodada de Julho/2026 com SGD fixo) que comprovou o salto de acurácia conferido pelo pré-treino de domínio.
 7. [**`04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
