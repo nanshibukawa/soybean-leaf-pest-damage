@@ -1,6 +1,6 @@
 # 🔍 Análise Qualitativa de Ruído Amostral, Polimorfismo e Falsos Positivos da Mineração
 
-Este documento formaliza o diagnóstico qualitativo dos recortes (*crops*) gerados pelo pipeline de mineração automatizada via API do iNaturalist e localização pelo detector YOLOv8. Serve como registro técnico e base textual para as seções de **Análise de Erros**, **Discussão** e **Trabalhos Futuros** do manuscrito e publicações científicas associadas.
+Este documento formaliza o diagnóstico qualitativo dos recortes (*crops*) gerados pelo pipeline de mineração automatizada via API do iNaturalist e localização pelo detector YOLOv8. Serve como registro técnico e fundamentação empírica para a compreensão dos modos de falha e da discrepância de generalização observada no benchmark externo (*INSECT12C*).
 
 ---
 
@@ -19,20 +19,30 @@ Embora a esteira tenha viabilizado o aumento do volume de dados para 11.468 reco
 A inspeção detalhada da classe `spodoptera_albula` (localizada em `artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/`) identificou três perfis morfológicos distintos presentes no dataset de treino:
 
 ### A. Amostra Canônica Ideal (Fase Larval em Tecido Vegetal)
-* **Arquivo:** [`inat_obs_244363539_crop_1.jpg`](../../artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/inat_obs_244363539_crop_1.jpg)
+<img src="images/inat_obs_244363539_crop_1.jpg" alt="Amostra Canônica Larval" width="220" />
+
+* **Arquivo:** [`inat_obs_244363539_crop_1.jpg`](images/inat_obs_244363539_crop_1.jpg)
 * **Descrição Visual:** Lagarta íntegra com padrão listrado longitudinal nítido, cápsula cefálica preservada, em postura ativa de alimentação sobre tecido vegetal.
 * **Impacto no Modelo:** Fornece os gradientes convolucionais desejados para reconhecimento de danos de desfolha no campo.
 
 ### B. Polimorfismo de Fase de Vida (Espécimes Adultos / Mariposas)
+<p align="left">
+  <img src="images/inat_obs_42444465_crop_0.jpg" alt="Mariposa em repouso" width="180" />
+  <img src="images/inat_obs_244826083_crop_0.jpg" alt="Mariposa adulta em pano" width="180" />
+  <img src="images/inat_obs_247051453_crop_0.jpg" alt="Mariposa noturna" width="180" />
+</p>
+
 * **Arquivos Auditados:**
-  * [`inat_obs_42444465_crop_0.jpg`](../../artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/inat_obs_42444465_crop_0.jpg) (Mariposa em repouso com asas dobradas sobre superfície plana);
-  * [`inat_obs_244826083_crop_0.jpg`](../../artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/inat_obs_244826083_crop_0.jpg) (Mariposa adulta com vista dorsal e asas triangulares sobre pano de amostragem);
-  * [`inat_obs_247051453_crop_0.jpg`](../../artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/inat_obs_247051453_crop_0.jpg) (Mariposa adulta cinzenta de grande porte em pano de captura noturna).
+  * [`inat_obs_42444465_crop_0.jpg`](images/inat_obs_42444465_crop_0.jpg) (Mariposa em repouso com asas dobradas sobre superfície plana);
+  * [`inat_obs_244826083_crop_0.jpg`](images/inat_obs_244826083_crop_0.jpg) (Mariposa adulta com vista dorsal e asas triangulares sobre pano de amostragem);
+  * [`inat_obs_247051453_crop_0.jpg`](images/inat_obs_247051453_crop_0.jpg) (Mariposa adulta cinzenta de grande porte em pano de captura noturna).
 * **Causa-Raiz:** No iNaturalist (plataforma colaborativa de ciência cidadã), metadados de ciclo de vida frequentemente são marcados a nível de observação geral por voluntários. Usuários que monitoram o ciclo da praga anexam fotos do adulto emergido, ou marcam erradamente a fase larval em observações de espécimes adultos.
 * **Impacto no Modelo:** A classe passa a ter uma **distribuição bimodal no espaço latente** (corpos cilíndricos/vermiformes vs. corpos triangulares/alados com escamas), forçando o extrator de características a gastar parâmetros com padrões irrelevantes para o dano foliar direto.
 
 ### C. Falsos Positivos de Detecção (Fragmentos Anatômicos e Artefatos)
-* **Arquivo:** [`inat_obs_247158339_crop_4.jpg`](../../artifacts/data/processed/DatasetPests-cropped/spodoptera_albula/inat_obs_247158339_crop_4.jpg)
+<img src="images/inat_obs_247158339_crop_4.jpg" alt="Fragmento ou Apêndice Isolado" width="180" />
+
+* **Arquivo:** [`inat_obs_247158339_crop_4.jpg`](images/inat_obs_247158339_crop_4.jpg)
 * **Descrição Visual:** Antena / apêndice isolado sobre tecido branco, sem corpo ou morfologia discernível de lagarta.
 * **Causa-Raiz:** O detector YOLOv8n, calibrado para sensibilidade alta em caixas de pequeno porte, ocasionalmente detecta segmentos corporais ou detritos como pragas individuais (`pest`).
 * **Impacto no Modelo:** Ruído puro de fundo que atua como regularizador indesejado ou vetor de confusão em classes com poucas amostras.
@@ -51,10 +61,22 @@ A identificação desse ruído explica com exatidão dois fenômenos observados 
 
 ---
 
-## ✍️ 4. Modelos de Texto Sugeridos para o Manuscrito e Publicações
+## 📌 4. Conclusões Técnicas e Recomendações
 
-### Texto para a Seção de Discussão de Resultados / Análise de Erros
-> *"A avaliação da matriz de confusão e do F1-score em Spodoptera albula evidenciou uma penalidade de generalização no benchmark externo zero-shot (INSECT12C: F1 = 0,778 na EfficientNetV2-B1 vs. 0,934 na validação interna). Uma auditoria qualitativa nos recortes minerados via API revelou que essa dispersão é decorrente de ruídos amostrais inerentes à ciência cidadã: a presença de espécimes na fase adulta (mariposas, e.g., inat_obs_244826083) e artefatos de falso-positivo do detector de localização (apêndices isolados, e.g., inat_obs_247158339). A presença de mariposas forçou os extratores a codificar uma representação bimodal para a classe, reduzindo a especificidade morfológica exigida no teste externo, composto exclusivamente por formas imaturas (lagartas) sobre folhas de soja."*
+### Síntese do Diagnóstico de Erros
+* **Causa do Gap de Generalização:** A divergência de desempenho observada em *Spodoptera albula* entre a validação interna (*DatasetPests*) e o teste externo (*INSECT12C*) decorre prioritariamente da presença de espécimes em fase adulta (mariposas) e de falsos positivos do detector (apêndices e detritos) na base minerada via ciência cidadã.
+* **Impacto no Espaço Latente:** A coexistência de lagartas e mariposas forçou a rede a aprender uma distribuição bimodal para uma única classe, dispersando a densidade discriminativa e reduzindo a precisão em dados de campo compostos unicamente por lagartas.
+* **Resiliência Arquitetural:** Redes com maior capacidade de canal e blocos com atenção convolucional (e.g., EfficientNetV2-B1) absorveram significativamente melhor o ruído bimodal em comparação com redes ultraleves.
 
-### Texto para a Seção de Limitações e Trabalhos Futuros
-> *"Como oportunidade direta de aprimoramento decorrente deste diagnóstico, recomenda-se para trabalhos futuros a introdução de uma etapa de filtragem morfológica pré-classificação ou a adoção de classificação hierárquica (Estágio Biológico: Larva vs. Adulto ➔ Espécie). Essa intervenção eliminará espécimes imaturos irrelevantes ou adultos antes da convergência dos modelos de borda, potencializando o alinhamento de domínio com cenários agronômicos reais."*
+### Recomendações Técnicas para Trabalhos Futuros
+* **Classificação Hierárquica:** Adoção de uma etapa prévia de predição do estágio biológico (*Fase: Larva vs. Adulto* ➔ *Espécie*), eliminando espécimes adultos antes da inferência específica de desfolha.
+* **Calibração e Filtragem do Detector YOLO:** Elevação do limiar de confiança (*confidence threshold*) e filtragem por área mínima para evitar que apêndices e fragmentos anatômicos isolados sejam classificados como pragas ativas.
+
+---
+
+## 📚 5. Referências Bibliográficas
+
+* **JOCHER, G.; CHAURASIA, A.; QIU, J.** *Ultralytics YOLOv8*. Versão 8.0.0, 2023. Disponível em: <https://github.com/ultralytics/ultralytics>.
+* **UNGER, S. et al.** *iNaturalist as a tool for citizen science and biodiversity monitoring: quality, biases and potential*. Biological Conservation, v. 257, p. 109099, 2021.
+* **WU, X. et al.** *IP102: A Large-Scale Benchmark Dataset for Insect Pest Recognition*. In: **IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)**, 2019, p. 8787-8796. DOI: [10.1109/CVPR.2019.00899](https://doi.org/10.1109/CVPR.2019.00899).
+

@@ -41,7 +41,7 @@ flowchart TD
 6. [**`04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md`**](04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md):  
    Estudo oficial de ablação na EfficientNetV2-B1 comparando ImageNet vs. IP102, comprovando ganhos consolidados na soja (+4,3% Acc / +6,3% F1) e no teste independente INSECT12C (+7,2% F1).
 7. [**`04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
-   Diagnóstico qualitativo de ruído amostral (mariposas adultas e artefatos de detecção YOLO) na classe *Spodoptera albula* e seu impacto no gap de generalização com o teste zero-shot (*INSECT12C*). Base textual pronta para a discussão de erros do manuscrito científico.
+   Diagnóstico qualitativo de ruído amostral (mariposas adultas e artefatos de detecção YOLO) na classe *Spodoptera albula* e seu impacto no gap de generalização com o teste zero-shot (*INSECT12C*).
 
 ---
 

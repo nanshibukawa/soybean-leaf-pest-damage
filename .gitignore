@@ -65,6 +65,12 @@ scratch/
 !docs/**/*.md
 !docs/*.md
 
+# Allow documentation assets and images
+!docs/**/*.jpg
+!docs/**/*.jpeg
+!docs/**/*.png
+!docs/**/*.svg
+
 # RAG / Qdrant
 src/rag/qdrant_storage/
 
