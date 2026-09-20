@@ -71,8 +71,9 @@ scratch/
 !docs/**/*.png
 !docs/**/*.svg
 
-# RAG / Qdrant
+# RAG / Qdrant & Internal Notes
 src/rag/qdrant_storage/
+docs/05_pesquisa_e_modulo_rag/
 
 # PyTorch / Model Weights
 *.pt
