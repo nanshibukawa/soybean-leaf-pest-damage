@@ -11,18 +11,18 @@ O pipeline transforma dados brutos heterogêneos (fotos de campo, anotações em
 ```mermaid
 flowchart TD
     subgraph INGESTAO ["1. Fontes de Dados Brutos (data_ingestion/)"]
-        A1["DatasetPests (Manual)<br/>iNaturalist + Label-Studio"]
-        A2["iNaturalist API<br/>Mineração (Larvas/Ninfas)"]
+        A1["DatasetPests Manual<br/>Fotos + Label-Studio"]
+        A2["iNaturalist API<br/>Fotos Mineradas"]
         A3["Dataset IP102<br/>102 Classes (XML)"]
-        A4["Dataset INSECT12C<br/>Base Externa de Teste"]
+        A4["INSECT12C<br/>Teste Externo"]
     end
 
     subgraph PREPROC ["2. Processamento e Recorte (scripts/data_preparation/)"]
         B1["Detector YOLOv8n<br/>Treino nas BBoxes"]
-        B2["Auto-Crop YOLOv8<br/>Recorte de Fotos da API"]
-        B3["Prepare DatasetPests<br/>Recorte via CSV (+20% Margem)"]
-        B4["Prepare IP102<br/>Crop em 102 Classes"]
-        B5["Prepare INSECT12C<br/>Mapeamento 10 Classes"]
+        B2["Auto-Crop YOLOv8<br/>Fotos da API"]
+        B3["Prepare DatasetPests<br/>CSV c/ Margem 20%"]
+        B4["Prepare IP102<br/>Crop 102 Classes"]
+        B5["Prepare INSECT12C<br/>Filtro 10 Classes"]
     end
 
     subgraph DIVISION ["3. Estruturação Sem Vazamento (artifacts/data/)"]
