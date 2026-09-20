@@ -10,7 +10,7 @@ A abordagem desenvolvida para superar os desafios do dataset IP102 (variação i
 
 1. **Passo 1 — Domain-Specific Pre-training (IP102):**
    * **Dataset:** IP102 (102 classes oficiais de insetos/pragas, 2.229 imagens de validação).
-   * **Função de Perda:** Categorical Focal Loss ($\gamma = 1.5$, $\alpha$ ponderado por frequência de classe inversa) para mitigar o desbalanceamento desproporcional entre classes.
+   * **Função de Perda:** Categorical Focal Loss ($\gamma = 1.5$, vetor $\alpha$ suavizado pelo Número Efetivo de Amostras — Cui et al., CVPR 2019, com $\beta=0.999$) para mitigar o desbalanceamento desproporcional entre classes.
    * **Mecanismo de Atenção/Pooling:** **Top-K Adaptive Pooling** ($k = 0.15$) para focar nos $15\%$ das regiões de maior relevância espacial e ignorar fundos ruidosos.
    * **Otimizador:** SGD com Cosine Decay Learning Rate Schedule e Warmup.
    * **Saída:** Extrator de características reutilizável (`ip102_<modelo>_extractor.keras`) e modelo completo (`ip102_<modelo>_full_model.keras`).
