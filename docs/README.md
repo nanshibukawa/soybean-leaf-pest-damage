@@ -39,7 +39,7 @@ flowchart TD
 5. [**`04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md`**](04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md):  
    Avaliação comparativa das 5 arquiteturas leves de borda no pré-treinamento IP102 (102 classes) e transferência downstream para o dataset da soja e teste zero-shot INSECT12C.
 6. [**`04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md`**](04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md):  
-   Estudo preliminar de ablação (rodada de Julho/2026 com SGD fixo) que comprovou o salto de acurácia conferido pelo pré-treino de domínio.
+   Estudo oficial de ablação na EfficientNetV2-B1 comparando ImageNet vs. IP102, comprovando ganhos consolidados na soja (+4,3% Acc / +6,3% F1) e no teste independente INSECT12C (+7,2% F1).
 7. [**`04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
    Diagnóstico qualitativo de ruído amostral (mariposas adultas e artefatos de detecção YOLO) na classe *Spodoptera albula* e seu impacto no gap de generalização com o teste zero-shot (*INSECT12C*). Base textual pronta para a discussão de erros do manuscrito científico.
 
