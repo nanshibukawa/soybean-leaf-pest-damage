@@ -11,10 +11,10 @@ Para compreender a evolução e a fundamentação do projeto do início ao fim, 
 
 ```mermaid
 flowchart TD
-    A["01. Roteiro Técnico e Metodológico\n(01_ROTEIRO_TECNICO_E_METODOLOGICO.md)"] --> B["02. Metodologia e Decisões\n(02_METODOLOGIA_E_DECISOES.md)"]
-    B --> C["03. Preparação e Limpeza de Dados\n(03_preparacao_dados/)"]
-    C --> D["04. Experimentos, Perda e Benchmarks\n(04_experimentos_e_benchmark/)"]
-    D --> E["05. Pesquisa de Campo & Módulo RAG (Projeto Pessoal)\n(05_pesquisa_e_modulo_rag/)"]
+    A["01. Roteiro Técnico e Metodológico<br/>(01_ROTEIRO_TECNICO_E_METODOLOGICO.md)"] --> B["02. Metodologia e Decisões<br/>(02_METODOLOGIA_E_DECISOES.md)"]
+    B --> C["03. Preparação e Limpeza de Dados<br/>(03_preparacao_dados/)"]
+    C --> D["04. Experimentos, Perda e Benchmarks<br/>(04_experimentos_e_benchmark/)"]
+    D --> E["05. Pesquisa de Campo & Módulo RAG<br/>(05_pesquisa_e_modulo_rag/)"]
 ```
 
 ---

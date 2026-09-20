@@ -11,26 +11,26 @@ O pipeline transforma dados brutos heterogêneos (fotos de campo, anotações em
 ```mermaid
 flowchart TD
     subgraph INGESTAO ["1. Fontes de Dados Brutos (data_ingestion/)"]
-        A1["DatasetPests (Anotação Manual)\nFotos iNaturalist + CSVs Label-Studio"]
-        A2["iNaturalist API\nFotos mineradas (Larvas/Ninfas)"]
-        A3["IP102 Dataset\n102 Classes de Insetos (XML)"]
-        A4["INSECT12C Dataset\nBase Externa de Teste (XML)"]
+        A1["DatasetPests (Manual)<br/>iNaturalist + Label-Studio"]
+        A2["iNaturalist API<br/>Mineração (Larvas/Ninfas)"]
+        A3["Dataset IP102<br/>102 Classes (XML)"]
+        A4["Dataset INSECT12C<br/>Base Externa de Teste"]
     end
 
     subgraph PREPROC ["2. Processamento e Recorte (scripts/data_preparation/)"]
-        B1["YOLOv8 Detector\n(Treinado nas Bounding Boxes)"]
-        B2["Auto-Crop iNaturalist\n(Detecção + Crop Inteligente)"]
-        B3["Prepare DatasetPests\n(Crop c/ Margem de 20%)"]
-        B4["Prepare IP102\n(Crop 102 Classes)"]
-        B5["Prepare INSECT12C\n(Crop 10 Classes / Filtros)"]
+        B1["Detector YOLOv8n<br/>Treino nas BBoxes"]
+        B2["Auto-Crop YOLOv8<br/>Detecção e Recorte"]
+        B3["Prepare DatasetPests<br/>Crop c/ Margem +20%"]
+        B4["Prepare IP102<br/>Crop em 102 Classes"]
+        B5["Prepare INSECT12C<br/>Mapeamento 10 Classes"]
     end
 
     subgraph DIVISION ["3. Estruturação Sem Vazamento (artifacts/data/)"]
-        C1["processed/DatasetPests-cropped/\n(Recortes em Disco)"]
-        C2["Group-based Split\n(Agrupamento por Imagem-Mãe)"]
-        C3["final/DatasetPests-split/\n(Train 90% / Val 10%)"]
-        C4["ip102/\n(Dados Pré-Treino)"]
-        C5["INSECT12C-test/\n(Dados Benchmark Externa)"]
+        C1["DatasetPests-cropped/<br/>Recortes em Disco"]
+        C2["Group-based Split<br/>Anti-Leakage Imagem-Mãe"]
+        C3["DatasetPests-split/<br/>Treino 90% / Val 10%"]
+        C4["ip102_cropped/<br/>Dados de Pré-Treino"]
+        C5["INSECT12C-test/<br/>Teste Externo Zero-Shot"]
     end
 
     A1 -->|Anotações YOLO| B1
