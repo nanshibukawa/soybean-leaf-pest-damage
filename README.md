@@ -88,7 +88,7 @@ pip install .[image-processing]
 ├── docs/                       # Relatórios e documentação técnica do projeto (organizados cronologicamente)
 │   ├── 01_ROTEIRO_TECNICO_E_METODOLOGICO.md # Fonte única da verdade técnica
 │   ├── 02_METODOLOGIA_E_DECISOES.md         # Rigor científico e controle experimental
-│   ├── 03_preparacao_dados/                 # Pipeline, limpeza iNaturalist e recortes
+│   ├── 03_PIPELINE_PREPROCESSAMENTO.md      # Pipeline de dados, YOLO e anti-leakage
 │   ├── 04_experimentos_e_benchmark/         # Focal loss, pré-treino IP102 e benchmark
 │   └── 05_pesquisa_e_modulo_rag/            # Pesquisa de campo e sistema RAG com Qdrant
 ├── artifacts/                  # Artefatos do projeto
@@ -102,7 +102,25 @@ pip install .[image-processing]
 <a id="uso"></a>
 ## 📝 Uso
 
-### Pipeline Completo
+### Pipeline de Dados e Preparação
+```bash
+# Executar pré-processamento completo (margem foliar +20%, auto-crop YOLO e split seguro)
+bash scripts/run_preprocessing_pipeline.sh
+```
+
+### Treinamento da Proposta (IP102 ➔ Fine-Tuning Soja)
+```bash
+# 1. Pré-treinamento entomológico no IP102 (102 classes)
+python scripts/train_ip102.py --data_dir artifacts/data/ip102
+
+# 2. Fine-tuning nas 10 classes de pragas da soja (EfficientNetV2-B1)
+python scripts/main.py --experiment efficientnetv2b1_finetune
+
+# 3. Avaliação no dataset independente de teste externo (INSECT12C)
+python scripts/evaluate_test.py --experiment efficientnetv2b1_finetune
+```
+
+### Pipeline Padrão (Execução Direta)
 ```bash
 # Executar pipeline completo com configuração padrão
 python scripts/main.py
