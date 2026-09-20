@@ -10,13 +10,13 @@ Este documento fundamenta a escolha da **Categorical Focal Crossentropy** em sub
 ## 1. Focal Loss vs. Sobreaumento de Dados (Oversampling)
 
 ### Limitações Estruturais da Geração de Dados Sintéticos e Sobreaumento
-Tentar balancear classes minoritárias no espaço de entrada gerando dados sintéticos adicionais ou duplicando imagens geometricamente apresenta restrições metodológicas críticas:
-1. **Redundância de Informação e Colapso de Variabilidade:** A repetição ou interpolação geométrica não adiciona informação estatística nova à distribuição da classe. Ela apenas replica padrões já presentes nas amostras existentes.
+Tentar balancear classes minoritárias no espaço de entrada gerando dados sintéticos adicionais ou duplicando imagens geometricamente apresenta restrições metodológicas críticas em distribuições de cauda longa (Cui et al., 2019):
+1. **Redundância de Informação e Colapso de Variabilidade:** A repetição ou duplicação de amostras não adiciona informação estatística nova à distribuição da classe, induzindo sobreajuste (*overfitting*) e memorização de ruído (Cui et al., 2019).
 2. **Sensibilidade a Texturas Artificiais:** Redes neurais convolucionais e Vision Transformers são altamente sensíveis a frequências espaciais e texturas locais, correndo o risco de aprender artefatos de replicação em vez de atributos morfológicos entomológicos reais.
-3. **Diluição do Gradiente Útil:** Um volume desproporcional de amostras artificiais fáceis satura o treinamento, consumindo a maior parte do orçamento de otimização em exemplos redundantes.
+3. **Diluição do Gradiente Útil:** Um volume desproporcional de amostras artificiais fáceis satura o treinamento, consumindo a maior parte do orçamento de otimização em exemplos redundantes (Lin et al., 2017).
 
 ### A Superioridade Estratégica da Focal Loss
-Em vez de forçar um equilíbrio artificial no conjunto de dados, a **Focal Loss** atua no espaço de otimização da função de perda, reequilibrando a contribuição de cada amostra dinamicamente:
+Em vez de forçar um equilíbrio artificial no conjunto de dados, a **Focal Loss** (Lin et al., 2017) atua no espaço de otimização da função de perda, reequilibrando a contribuição de cada amostra dinamicamente:
 * **Foco na Dificuldade Amostral:** Amostras de classificação fácil geram perdas residuais próximas de zero, permitindo que os gradientes priorizem os exemplos de fronteira morfológica mais desafiadores.
 * **Eficiência Computacional:** Preserva a distribuição real de captura de campo sem sobrecarregar o pipeline com milhares de cópias redundantes.
 
@@ -25,7 +25,7 @@ Em vez de forçar um equilíbrio artificial no conjunto de dados, a **Focal Loss
 ## 2. Dinâmica de Gradientes: Cross Entropy Ponderada vs. Focal Loss
 
 ### A Limitação de Cross Entropy com Pesos Simples ($w_c \propto 1/N_c$)
-A aplicação de pesos inversos lineares na Cross Entropy padrão tende a penalizar desproporcionalmente a precisão das classes minoritárias:
+A aplicação de pesos inversos lineares na Cross Entropy padrão tende a penalizar desproporcionalmente a precisão das classes minoritárias (Cui et al., 2019):
 
 $$\mathcal{L}_{WCE} = - w_c \log(p_c)$$
 
@@ -40,7 +40,7 @@ Se o modelo classificar incorretamente uma amostra minoritária ($c=\text{minori
 ---
 
 ### A Modulação Adaptativa da Categorical Focal Loss
-A Focal Loss mitiga esse comportamento ao introduzir o fator de modulação $(1 - p_t)^\gamma$:
+A Focal Loss (Lin et al., 2017) mitiga esse comportamento ao introduzir o fator de modulação $(1 - p_t)^\gamma$:
 $$\mathcal{L}_{FL} = - \alpha_t (1 - p_t)^\gamma \log(p_t)$$
 
 Onde $p_t$ é a probabilidade atribuída pelo modelo à classe correta. O gradiente da perda em relação ao logit correto torna-se:
