@@ -19,10 +19,12 @@ Para que as comparações entre o **Baseline (ImageNet)** e a **Proposta (IP102 
   - Idêntico para todos os modelos: *CutMix*, *RandomFlip* (horizontal e vertical), *RandomTranslation* (15%), *RandomZoom* (20%) e *Gaussian Noise* (0.03).
 * **Função de Perda (*Loss Function*)**:
   - *Categorical Focal Loss* com $\gamma=1.5$ e ponderação dinâmica $\alpha$ calculada por classe via Número Efetivo de Amostras (Cui et al., CVPR 2019) para equilibrar classes raras.
-* **Estratégia de Otimização no Pré-treino de Domínio (Passo 1 — IP102)**:
-  - **SGD com Momentum (0.9) e Nesterov** (Wilson et al., 2017): Adotado no pré-treinamento em larga escala por induzir superfícies de perda com maior capacidade de generalização em visão computacional quando comparado a otimizadores adaptativos sem regularização estrita.
-  - **Linear Warmup (5 épocas)** (Goyal et al., 2017): Inicialização suave em $10^{-4}$ com elevação linear até o pico de $10^{-2}$, impedindo que os gradientes elevados da cabeça densa recém-inicializada desestabilizem os pesos convolucionais do backbone (*catastrophic forgetting*).
-  - **Cosine Decay Learning Rate Schedule** (Loshchilov & Hutter, 2017): Desaceleração contínua e suave da taxa de atualização até a época 50 ($10^{-4}$), guiando os pesos a mínimos planos estáveis (*flat minima*).
+* **Estratégia de Otimização Unificada (Passo 1 — IP102 e Passo 2 — Fine-Tuning Soja)**:
+  - O mesmo motor de otimização é compartilhado rigorosamente em ambas as etapas do pipeline (`src/cnnClassifier/components/model_training.py` e `src/cnnClassifier/tuning/keras_tuner.py`):
+    - **SGD com Momentum (0.9) e Nesterov** (Wilson et al., 2017): Adotado por induzir superfícies de perda com maior capacidade de generalização em visão computacional quando comparado a otimizadores adaptativos sem regularização estrita.
+    - **Linear Warmup (10% dos passos de treino)** (Goyal et al., 2017): Inicialização suave com elevação linear até a taxa de aprendizado de pico, impedindo que os gradientes elevados da cabeça densa recém-inicializada desestabilizem os pesos convolucionais do backbone (*catastrophic forgetting* / distorção de *features*).
+    - **Cosine Decay Learning Rate Schedule** (Loshchilov & Hutter, 2017): Desaceleração contínua e suave da taxa de atualização até a fração residual ($\alpha=0.001$), guiando os pesos a mínimos planos estáveis (*flat minima*).
+  - **Diferenciação de Escala**: O Passo 1 (IP102) opera em 50 épocas com pico de taxa em $10^{-2}$; o Passo 2 (Soja / DatasetPests) opera em 80 épocas com taxa máxima contida (faixa de $10^{-3}$ a $10^{-4}$, calibrada via Keras Tuner) para refinamento fino conservador.
 
 ---
 
