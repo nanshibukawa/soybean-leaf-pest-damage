@@ -67,8 +67,6 @@ Para clareza em gráficos, tabelas e no texto do manuscrito, adotou-se a seguint
 | **ConvNeXt-Tiny** | Proposta (IP102) | **93.32%** | **59.63%** | **58.17 ms** | ✅ Concluído (**80.81%** em imagens grandes >100px) |
 | **ConvNeXt-Tiny** | Baseline (ImageNet) | **94.39%** | **60.39%** | **57.89 ms** | ✅ Concluído (Modelo de alta capacidade ImageNet) |
 
-> 📌 **Status do Benchmark Oficial:** Todos os modelos acima foram avaliados de forma unificada e compõem as curvas de Pareto e a Tabela 1 oficial do artigo científico.
-
 ---
 
 ## 5. 📦 Estrutura dos Datasets e Ingestão Automática
