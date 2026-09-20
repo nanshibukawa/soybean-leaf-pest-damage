@@ -19,8 +19,8 @@ O modelo `EfficientNetV2B1` foi pré-treinado no dataset oficial **IP102** (102 
 
 ---
 
-## ⚡ Passo 2: Fine-Tuning Definitivo (Dataset de Soja)
-Este é o próximo passo a ser executado. O pipeline carregará os pesos do extrator do IP102, acoplará uma cabeça de classificação adaptada para as pragas da soja (10 classes) e fará o ajuste fino.
+## ⚡ Passo 2: Fine-Tuning nas Pragas da Soja
+Para executar o ajuste fino nas 10 classes de interesse, o pipeline carrega os pesos do extrator pré-treinado no IP102, acopla a cabeça de classificação adaptada e executa o fine-tuning:
 
 *   **Comando para executar:**
     ```bash
@@ -35,7 +35,7 @@ Este é o próximo passo a ser executado. O pipeline carregará os pesos do extr
 ---
 
 ## 📊 Passo 3: Avaliação Independente (INSECT12C)
-Após finalizar o fine-tuning, você deve avaliar o modelo final em um dataset de teste completamente independente (imagens do repositório de Everton Tetila).
+Para avaliar o modelo em um dataset de teste de campo completamente independente (*INSECT12C*):
 
 *   **Comando para executar:**
     ```bash
@@ -49,7 +49,7 @@ Após finalizar o fine-tuning, você deve avaliar o modelo final em um dataset d
 ---
 
 ## ⚙️ Passo 4: Otimização de Hiperparâmetros (Opcional)
-Se você desejar buscar melhores taxas de aprendizado, taxas de dropout ou camadas para descongelar usando o Keras Tuner integrado ao MLflow:
+Para executar a busca bayesiana de hiperparâmetros (taxas de aprendizado, dropout, etc.) usando o Keras Tuner integrado ao MLflow:
 
 *   **Comando para executar:**
     ```bash
