@@ -36,21 +36,19 @@ flowchart TD
 ### Fase 3: Experimentos, Perda e Benchmarks ([`04_experimentos_e_benchmark/`](04_experimentos_e_benchmark/))
 4. [**`04_experimentos_e_benchmark/01_analise_focal_loss_soja.md`**](04_experimentos_e_benchmark/01_analise_focal_loss_soja.md):  
    Dedução matemática da *Categorical Focal Loss* ($\gamma = 1.5$) demonstrando por que a Cross-Entropy com pesos simples destruía a precisão das classes raras.
-5. [**`04_experimentos_e_benchmark/02_pretrain_ip102_log_report.md`**](04_experimentos_e_benchmark/02_pretrain_ip102_log_report.md):  
-   Log e métricas de convergência das 50 épocas do pré-treinamento da EfficientNetV2-B1 no benchmark IP102.
-6. [**`04_experimentos_e_benchmark/03_benchmark_ip102_e_downstream.md`**](04_experimentos_e_benchmark/03_benchmark_ip102_e_downstream.md):  
-   Comparação detalhada com o Estado da Arte (SOTA 2019–2026) da literatura no IP102 e resultados downstream do fine-tuning.
-7. [**`04_experimentos_e_benchmark/04_estudo_ablacao_ip102_vs_imagenet.md`**](04_experimentos_e_benchmark/04_estudo_ablacao_ip102_vs_imagenet.md):  
+5. [**`04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md`**](04_experimentos_e_benchmark/02_benchmark_ip102_e_downstream.md):  
+   Comparação detalhada com o Estado da Arte (SOTA 2019–2026) da literatura no IP102 e resultados downstream do fine-tuning para todos os modelos avaliados.
+6. [**`04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md`**](04_experimentos_e_benchmark/03_estudo_ablacao_ip102_vs_imagenet.md):  
    Estudo preliminar de ablação (rodada de Julho/2026 com SGD fixo) que comprovou o salto de acurácia conferido pelo pré-treino de domínio.
-8. [**`04_experimentos_e_benchmark/05_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/05_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
+7. [**`04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md`**](04_experimentos_e_benchmark/04_analise_qualitativa_ruido_mineracao_e_polimorfismo.md):  
    Diagnóstico qualitativo de ruído amostral (mariposas adultas e artefatos de detecção YOLO) na classe *Spodoptera albula* e seu impacto no gap de generalização com o teste zero-shot (*INSECT12C*). Base textual pronta para a discussão de erros do manuscrito científico.
 
 ---
 
 ### Fase 4: Pesquisa de Campo & Módulo RAG (Projeto Pessoal) ([`05_pesquisa_e_modulo_rag/`](05_pesquisa_e_modulo_rag/))
-9. [**`05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md`**](05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md):  
+8. [**`05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md`**](05_pesquisa_e_modulo_rag/01_pesquisa_solucoes_mercado.md):  
    Levantamento de aplicações e ferramentas concorrentes existentes para identificação de pragas no agronegócio.
-10. [**`05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md`**](05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md):  
-    Roteiro de entrevistas com agrônomos, produtores e cooperativas para validação de usabilidade da solução em campo.
-11. [**`05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md`**](05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md):  
+9. [**`05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md`**](05_pesquisa_e_modulo_rag/02_roteiro_entrevista_campo.md):  
+   Roteiro de entrevistas com agrônomos, produtores e cooperativas para validação de usabilidade da solução em campo.
+10. [**`05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md`**](05_pesquisa_e_modulo_rag/03_arquitetura_sistema_rag.md):  
     Documentação técnica da prova de conceito da API de RAG: *Docling*, *Semantic Chunking* (HDBSCAN), representação híbrida (*Dense E5* + *Sparse BM25* + *ColBERT*), banco vetorial *Qdrant* e LLM *Llama 3.3*.
