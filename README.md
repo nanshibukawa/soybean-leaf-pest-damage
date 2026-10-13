@@ -4,6 +4,7 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 
 ## 🔎 Sumário
 
+- [📱 Aplicativo Android (PestClassifier)](#app)
 - [📋 Descrição](#descricao)
 - [🚀 Tecnologias](#tecnologias)
 - [📦 Instalação](#instalacao)
@@ -14,13 +15,32 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 - [🎓 Projeto](#projeto)
 - [📄 Licença](#licenca)
 
+<a id="app"></a>
+## 📱 Aplicativo Android (PestClassifier)
+
+O projeto conta com o aplicativo móvel **PestClassifier**, desenvolvido para dispositivos Android, capaz de executar inferência de Deep Learning de forma **100% offline** diretamente no celular, voltado ao auxílio na tomada de decisão de manejo integrado de pragas (MIP) no campo.
+
+* 📥 **[Baixar APK do Aplicativo (mobile_app/PestClassifier-debug.apk)](mobile_app/PestClassifier-debug.apk)** *(42 MB, Android 4.0+)*
+* 📖 **[Documentação e guia detalhado de instalação](mobile_app/README.md)**
+
+### 🎬 Demonstração em Vídeo (Tempo Real no Smartphone)
+
+<p align="center">
+  <video src="mobile_app/assets/demo_pestclassifier.mp4" controls="controls" width="340" alt="Demonstração do PestClassifier no Android">
+    Seu navegador não suporta a tag de vídeo. Acesse o arquivo em mobile_app/assets/demo_pestclassifier.mp4.
+  </video>
+</p>
+
+---
+
 <a id="descricao"></a>
 ## 📋 Descrição
 
 Este projeto implementa:
 
-1. Classificação de imagens para identificar danos em folhas de soja, usando CNNs e arquiteturas baseadas em Transformers (ex.: MobileViT, ViT).
-2. Perguntas e respostas com RAG, integrando recuperação semântica de documentos e geração de respostas estruturadas com LLM.
+1. **Classificação de pragas em folhas de soja:** usando CNNs leves e Transformers otimizados (EfficientNetV2, MobileNetV3, ConvNeXt, MobileViT) com pré-treinamento de domínio no dataset agronômico IP102.
+2. **Implantação em Borda (Edge Computing):** quantização TFLite FP16 do modelo campeão (EfficientNetV2-B1) para inferência em tempo real e de baixo consumo energético, embarcado no app Android.
+3. **Perguntas e respostas com RAG:** integrando recuperação semântica de documentos agronômicos e geração de respostas estruturadas com LLM.
 
 <a id="tecnologias"></a>
 ## 🚀 Tecnologias
@@ -91,10 +111,15 @@ pip install .[image-processing]
 │   ├── 03_PIPELINE_PREPROCESSAMENTO.md      # Pipeline de dados, YOLO e anti-leakage
 │   ├── 04_experimentos_e_benchmark/         # Focal loss, pré-treino IP102 e benchmark
 │   └── 05_pesquisa_e_modulo_rag/            # Pesquisa de campo e sistema RAG com Qdrant
+├── mobile_app/                 # Aplicativo Android nativo (PestClassifier)
+│   ├── PestClassifier-debug.apk# Binário Android compilado (42 MB)
+│   ├── README.md               # Guia de instalação e requisitos
+│   └── assets/
+│       └── demo_pestclassifier.mp4 # Vídeo de demonstração em execução
 ├── artifacts/                  # Artefatos do projeto
 │   ├── data/                   # Datasets organizados (raw, processed, final, yolo)
 │   ├── data_ingestion/         # Ingestão bruta de dados
-│   ├── models/                 # Modelos salvos (.keras, .pt)
+│   ├── models/                 # Modelos salvos (.keras, .pt, .tflite)
 │   └── yolo_runs/              # Treinamentos do detector YOLOv8
 └── logs/                       # Logs de execução
 ```
