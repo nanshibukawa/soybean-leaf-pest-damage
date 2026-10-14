@@ -32,7 +32,6 @@ Você pode baixar e instalar diretamente o binário compilado:
 * **Tecnologia:** TensorFlow Lite (TFLite com quantização FP16)
 * **Operação:** Inferência em tempo real executada localmente no dispositivo (*On-device Edge AI*)
 * **Conectividade:** **100% Offline** (funciona sem sinal de internet ou rede celular no campo)
-* **Entrada:** Captura direta pela câmera do smartphone ou seleção a partir da galeria de fotos
 
 ---
 

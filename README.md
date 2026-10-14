@@ -2,6 +2,18 @@
 
 Sistema de detecção de danos causados por pragas em folhas de soja utilizando Deep Learning, com módulo complementar de RAG (Retrieval-Augmented Generation) para consulta em documentos técnicos.
 
+<p align="center">
+  <img src="mobile_app/assets/demo_pestclassifier.gif" alt="Demonstração do PestClassifier no Android" width="280"/>
+  <br>
+  <em>📱 <b>PestClassifier:</b> Classificação de pragas em tempo real e 100% offline no Android com EfficientNetV2-B1 (TFLite FP16).</em>
+  <br><br>
+  <a href="mobile_app/PestClassifier-debug.apk">📥 <b>Baixar APK (42 MB)</b></a> •
+  <a href="mobile_app/assets/demo_pestclassifier.mp4">🎬 <b>Vídeo Completo (.mp4)</b></a> •
+  <a href="mobile_app/README.md">📖 <b>Documentação do App</b></a>
+</p>
+
+---
+
 ## 🔎 Sumário
 
 - [📱 Aplicativo Android (PestClassifier)](#app)
@@ -21,15 +33,8 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 O projeto conta com o aplicativo móvel **PestClassifier**, desenvolvido para dispositivos Android, capaz de executar inferência de Deep Learning de forma **100% offline** diretamente no celular, voltado ao auxílio na tomada de decisão de manejo integrado de pragas (MIP) no campo.
 
 * 📥 **[Baixar APK do Aplicativo (mobile_app/PestClassifier-debug.apk)](mobile_app/PestClassifier-debug.apk)** *(42 MB, Android 4.0+)*
-* 📖 **[Documentação e guia detalhado de instalação](mobile_app/README.md)**
-
-### 🎬 Demonstração em Vídeo (Tempo Real no Smartphone)
-
-<p align="center">
-  <video src="mobile_app/assets/demo_pestclassifier.mp4" controls="controls" width="340" alt="Demonstração do PestClassifier no Android">
-    Seu navegador não suporta a tag de vídeo. Acesse o arquivo em mobile_app/assets/demo_pestclassifier.mp4.
-  </video>
-</p>
+* 📖 **[Documentação técnica e guia de instalação](mobile_app/README.md)**
+* 🎬 **[Vídeo demonstrativo completo de 1m23s](mobile_app/assets/demo_pestclassifier.mp4)**
 
 ---
 
@@ -71,7 +76,7 @@ Este projeto implementa:
 
 ```bash
 # Clone o repositório
-git clone https://github.com/seu-usuario/soybean-leaf-pest-damage.git
+git clone https://github.com/nanshibukawa/soybean-leaf-pest-damage.git
 cd soybean-leaf-pest-damage
 
 # Instale via pyproject (modo padrão)
