@@ -115,12 +115,15 @@ pip install .[image-processing]
 │   ├── 02_METODOLOGIA_E_DECISOES.md         # Rigor científico e controle experimental
 │   ├── 03_PIPELINE_PREPROCESSAMENTO.md      # Pipeline de dados, YOLO e anti-leakage
 │   ├── 04_experimentos_e_benchmark/         # Focal loss, pré-treino IP102 e benchmark
-│   └── 05_pesquisa_e_modulo_rag/            # Pesquisa de campo e sistema RAG com Qdrant
+├── graphics/                   # Scripts de visualização e gráficos do artigo
+│   ├── benchmark_graficos_avaliacao_predicao.py # Geração das figuras de Pareto
+│   └── output/                 # PDFs e PNGs das curvas de acurácia vs. latência
 ├── mobile_app/                 # Aplicativo Android nativo (PestClassifier)
 │   ├── PestClassifier-debug.apk# Binário Android compilado (42 MB)
 │   ├── README.md               # Guia de instalação e requisitos
 │   └── assets/
-│       └── demo_pestclassifier.mp4 # Vídeo de demonstração em execução
+│       ├── demo_pestclassifier.gif # Demonstração animada para o README
+│       └── demo_pestclassifier.mp4 # Gravação de vídeo completa (1m23s)
 ├── artifacts/                  # Artefatos do projeto
 │   ├── data/                   # Datasets organizados (raw, processed, final, yolo)
 │   ├── data_ingestion/         # Ingestão bruta de dados
@@ -348,4 +351,4 @@ Este projeto está sob licença UTFPR.
 
 ---
 
-**Status:** Em desenvolvimento 🚧
+**Status:** Modelos e aplicativo finalizados
