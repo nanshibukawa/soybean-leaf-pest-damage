@@ -38,6 +38,12 @@ O projeto conta com o aplicativo móvel **PestClassifier**, desenvolvido para di
 * 🎬 **[Download do Vídeo Completo em MP4 (mobile_app/assets/demo_pestclassifier.mp4)](mobile_app/assets/demo_pestclassifier.mp4)**
 * 📖 **[Documentação técnica e guia de instalação](mobile_app/README.md)**
 
+
+### 🎬 Demonstração em Vídeo (1m23s)
+
+https://github.com/user-attachments/assets/4ba00158-c0e2-413c-b015-cd723e3cf8d8
+
+
 ---
 
 <a id="descricao"></a>
