@@ -6,15 +6,14 @@ O **PestClassifier** é uma aplicação nativa Android que realiza inferência d
 
 ## 🎬 Demonstração em Vídeo
 
-Assista à demonstração do aplicativo executando a predição em tempo real diretamente no smartphone:
+Demonstração do aplicativo executando a predição em tempo real diretamente no smartphone:
 
 <p align="center">
-  <video src="assets/demo_pestclassifier.mp4" controls="controls" width="320" alt="Demonstração do PestClassifier no Android">
-    Seu navegador não suporta a tag de vídeo. Acesse o arquivo em assets/demo_pestclassifier.mp4.
-  </video>
+  <img src="assets/demo_pestclassifier.gif" alt="Demonstração do PestClassifier no Android" width="280"/>
+  <br><br>
+  <a href="https://youtube.com/shorts/91z50bZVgqI">▶️ <b>Assistir no YouTube Shorts</b></a> •
+  <a href="assets/demo_pestclassifier.mp4">🎬 <b>Download do Vídeo Completo (.mp4)</b></a>
 </p>
-
-*(O vídeo de demonstração completo também está disponível no diretório [`assets/demo_pestclassifier.mp4`](assets/demo_pestclassifier.mp4)).*
 
 ---
 

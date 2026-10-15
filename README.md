@@ -8,7 +8,8 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
   <em>📱 <b>PestClassifier:</b> Classificação de pragas em tempo real e 100% offline no Android com EfficientNetV2-B1 (TFLite FP16).</em>
   <br><br>
   <a href="mobile_app/PestClassifier-debug.apk">📥 <b>Baixar APK (42 MB)</b></a> •
-  <a href="mobile_app/assets/demo_pestclassifier.mp4">🎬 <b>Vídeo Completo (.mp4)</b></a> •
+  <a href="https://youtube.com/shorts/91z50bZVgqI">▶️ <b>Assistir no YouTube</b></a> •
+  <a href="mobile_app/assets/demo_pestclassifier.mp4">🎬 <b>Download do Vídeo (.mp4)</b></a> •
   <a href="mobile_app/README.md">📖 <b>Documentação do App</b></a>
 </p>
 
@@ -33,8 +34,9 @@ Sistema de detecção de danos causados por pragas em folhas de soja utilizando 
 O projeto conta com o aplicativo móvel **PestClassifier**, desenvolvido para dispositivos Android, capaz de executar inferência de Deep Learning de forma **100% offline** diretamente no celular, voltado ao auxílio na tomada de decisão de manejo integrado de pragas (MIP) no campo.
 
 * 📥 **[Baixar APK do Aplicativo (mobile_app/PestClassifier-debug.apk)](mobile_app/PestClassifier-debug.apk)** *(42 MB, Android 4.0+)*
+* ▶️ **[Assistir à Demonstração no YouTube Shorts](https://youtube.com/shorts/91z50bZVgqI)** *(1m23s em tempo real)*
+* 🎬 **[Download do Vídeo Completo em MP4 (mobile_app/assets/demo_pestclassifier.mp4)](mobile_app/assets/demo_pestclassifier.mp4)**
 * 📖 **[Documentação técnica e guia de instalação](mobile_app/README.md)**
-* 🎬 **[Vídeo demonstrativo completo de 1m23s](mobile_app/assets/demo_pestclassifier.mp4)**
 
 ---
 
